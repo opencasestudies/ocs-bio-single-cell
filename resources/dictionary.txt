@@ -15,6 +15,7 @@ Github
 github
 glyphicons
 HTTPS
+https
 hw
 iconpacks
 lightblue
@@ -23,6 +24,7 @@ lightgreen
 los
 NonCommercial
 ocs
+opencasestudies
 OTTR
 ottrproject
 quarto
@@ -31,5 +33,6 @@ repo
 Rmd
 RStudio
 subdir
+transcriptomic
 th
 www
