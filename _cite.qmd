@@ -7,6 +7,6 @@ The reference block (specifically the inner_block) should be updated to reflect 
 To cite this case study, please use:
 ::::
 ::::{.inner_block}
-{Fill In Authors}. {(YEAR)}. {github source url}. {Title} {(Version)}.
+Isaac, Kathryn J and Hicks, Stephanie and Wright, Carrie. (2026). [https://github.com/opencasestudies/ocs-bio-single-cell/](https://github.com/opencasestudies/ocs-bio-single-cell/). Normalizing high dimension single cell transcriptomic data (Version v1.0.0)
 ::::
 :::
