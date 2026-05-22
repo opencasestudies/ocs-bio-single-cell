@@ -9,12 +9,27 @@ We will begin by loading the packages that we will need:
 ```{r}
 #add library() calls
 library(here)
+library(tidyverse)
+library(SingleCellExperiment)
+library(scuttle)
+library(scran)
+library(scater)
+
 ```
 
 Package    | Use
 ---------- |-------------
 [{Package Name}]({Documentation URL}){target="_blank"}      | {Package use}
 [{Package Name}]({Documentation URL}){target="_blank"}      | {Package use}
+here
+tidyverse
+SingleCellExperiment
+Scuttle
+Scater
+Scran
+Azimuth
+scDblFinder
+ggplot2
 
 
 The first time we use a function, we will use the `::` to indicate which package we are using. Unless we have overlapping function names, this is not necessary, but we will include it here to be informative about where the functions we will use come from.
