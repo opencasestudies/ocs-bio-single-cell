@@ -12,7 +12,7 @@ You may want to include a table about file or variable info.
 2. Slightly processed matrix files, separated for each of the 6 samples, [available on GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE211088).
 3. A `SingleCellExperiment` object of slightly processed data, for all 6 samples, [available on zenodo](https://zenodo.org/records/10091236) are already stored as a specialized R class/object -- a `SingleCellExperiment`. It has data for all 6 samples ("1C", "2E", "3C", "4E", "5C", "8E") in the one object.
 
-![](img/SingleCellExperimentObject.png)
+![](img/singleCellExperimentObject.png)
 
 We'll want to include information in the background sections on `.fastq` files being the raw data and how they get to where they are when we start working with them for this kind of a project.
 

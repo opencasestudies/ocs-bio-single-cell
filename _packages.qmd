@@ -22,7 +22,7 @@ library(SoupX)
 library(scDblFinder)
 ```
 
-!<--
+<!--
 Azimuth needs to be installed from GitHub. It also needed c++ 14 compiler which I handled on rhino with `Sys.setenv(PKG_CXXFLAGS = "-std=c++14")`
 FastCAR also needed to be installed from GitHub
 -->
