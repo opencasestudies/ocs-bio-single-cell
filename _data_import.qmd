@@ -3,13 +3,79 @@
 
 ## Read in data
 
+!<--
+When downloading the data with `zen4R` from zenodo, I got warning messages about file integrity. Had to increase the timeout to 600
+-->
+
+
+```{r, eval = FALSE}
+zenodo_doi <- "10.5281/zenodo.10091236"
+target_directory <- "/fh/fast/leek_j/user/kisaac/ocs_sc/zenodo_files"
+zen4R::download_zenodo(doi = zenodo_doi, path = target_directory, timeout = 600)
+snrna_data <- readRDS(here::here("zenodo_files/sce_mouse_sleep_snrnaseq_complete.rds"))
+```
+
 ## Create annotations and SingleCellExperiment objects for each mouse
+
+Using that zenodo data means that this part was already handled
 
 ## Handling Introns, Exons, and Mitochondrial genes
 
-### Remove introns and exons with the same ID
+```{r, eval = FALSE}
+# Extract Exon Ensembl IDs and associated count data
+exon_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     filter(!grepl("-I", gene_id)) %>%
+     pull(gene_id)
 
-### Reorder so all objects have the same gene orders
+exon_data <- snrna_data[exon_ids]
+
+# Extract Intron Ensembl IDs and associated count data
+intron_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     filter(grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+intron_data <- snrna_data[intron_ids]
+
+# Simplify Ensembl IDs and find matching IDs between introns and exons
+
+pattern_to_remove <- "\\..*"
+replace_string <- ""
+
+## the IDs
+exon_ids <- sub(pattern_to_remove, replace_string, exon_ids)
+intron_ids <- sub(pattern_to_remove, replace_string, intron_ids)
+
+## the data sources
+rownames(exon_data) <- sub(pattern_to_remove, replace_string, rownames(exon_data))
+rownames(intron_data) <- sub(pattern_to_remove, replace_string, rownames(intron_data))
+rownames(snrna_data) <- sub(pattern_to_remove, replace_string, rownames(snrna_data))
+
+# Subset to only exons and introns with the same Ensembl ID
+same_ensembl <- intersect(exon_ids, intron_ids)
+
+# Remove introns and exons with shared IDs from the overall snRNA data
+snrna_data_ids_subset <- rownames(snrna_data) %>%
+  as.data.frame() %>%
+  filter(!. %in% same_ensembl) %>%
+  pull(.)
+
+# A new SingleCellExperiment object was created, where the sum
+# of the UMI counts of spliced mRNA and introns sharing the same
+# Ensembl ID was added.
+sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
+    counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
+colData(sce) <- colData(snrna_data)
+
+# Add some metadata columns like condition and replicate number
+sce <- sce %>%
+  mutate(condition = case_when(str_detect(sample_id, "C") ~ "HC", #HC for Home Cage
+                               str_detect(sample_id, "E") ~ "SD" #SD for Sleep Deprived
+                               )
+        ) %>%
+  mutate(replicate = factor(str_remove(sample_id, "[A-Za-z]")))
+```
 
 ### Annotate the chromosome including mitochondrial genes
 

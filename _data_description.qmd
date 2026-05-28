@@ -6,9 +6,18 @@ You may want to include a table about file or variable info.
 # **What are the data?**
 ***
 
-Variable   | Details
----------- |-------------
-**variable1**  | Variable info  <br> -- more details <br> -- more details <br>  **Example**: Content content
-**variable2**  | Variable info  <br> -- more details <br> -- more details <br>  **Example**: Content content
+"Raw" Data is available 3 different ways for this project.
+
+1. The `.fastq` files are [available on SRA](https://trace.ncbi.nlm.nih.gov/Traces/index.html?run=SRR21020314), with instructions on how they were aligned and counted using salmon alevin [available on the GitHub](https://github.com/PeixotoLab/RNAseq_sleep/blob/main/README.md#running-salmon-alevin).
+2. Slightly processed matrix files, separated for each of the 6 samples, [available on GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE211088).
+3. A `SingleCellExperiment` object of slightly processed data, for all 6 samples, [available on zenodo](https://zenodo.org/records/10091236) are already stored as a specialized R class/object -- a `SingleCellExperiment`. It has data for all 6 samples ("1C", "2E", "3C", "4E", "5C", "8E") in the one object.
+
+![](img/SingleCellExperimentObject.png)
+
+We'll want to include information in the background sections on `.fastq` files being the raw data and how they get to where they are when we start working with them for this kind of a project.
+
+The zenodo data and object is the one that the vignette works with. Therefore, I think it would be worthwhile to include a side quest of how they got to that `SingleCellExperiment` object. But we'll want to work with it largely because that will make it simpler. I also noticed that the zenodo data object includes a "whitelist" variable, such that for each of the 65989 barcodes across the 6 samples, it's communicating whether salmon thinks it's a high quality cell or not. I don't see this variable getting used in the analysis aside from being included in building the `SingleCellExperiment` object. It could be interesting to see how it compares to filtering steps (like scuttle QC or ambient RNA detection...)
+
+You can fetch zenodo data with an R package `zen4R` (which is what I did) or using `curl` which is what the vignette did. Going to use `zen4R` for the case study.
 
 ***
