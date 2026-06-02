@@ -15,9 +15,9 @@ zen4R::download_zenodo(doi = zenodo_doi, path = target_directory, timeout = 600)
 snrna_data <- readRDS(here::here("zenodo_files/sce_mouse_sleep_snrnaseq_complete.rds"))
 ```
 
-## Create annotations and SingleCellExperiment objects for each mouse
+## Create annotations and SingleCellExperiment object
 
-Using that zenodo data means that this part was already handled
+Using that zenodo data means that the annotations part was already handled and there's an overall SingleCellExperiment object for all mice
 
 ## Handling Introns, Exons, and Mitochondrial genes
 
@@ -25,7 +25,7 @@ Using that zenodo data means that this part was already handled
 # Extract Exon Ensembl IDs and associated count data
 exon_ids <- rowData(snrna_data) %>%
      as.data.frame() %>%
-     filter(!grepl("-I", gene_id)) %>%
+     dplyr::filter(!grepl("-I", gene_id)) %>%
      pull(gene_id)
 
 exon_data <- snrna_data[exon_ids]
@@ -33,7 +33,7 @@ exon_data <- snrna_data[exon_ids]
 # Extract Intron Ensembl IDs and associated count data
 intron_ids <- rowData(snrna_data) %>%
      as.data.frame() %>%
-     filter(grepl("-I", gene_id)) %>%
+     dplyr::filter(grepl("-I", gene_id)) %>%
      pull(gene_id)
 
 intron_data <- snrna_data[intron_ids]
@@ -58,7 +58,7 @@ same_ensembl <- intersect(exon_ids, intron_ids)
 # Remove introns and exons with shared IDs from the overall snRNA data
 snrna_data_ids_subset <- rownames(snrna_data) %>%
   as.data.frame() %>%
-  filter(!. %in% same_ensembl) %>%
+  dplyr::filter(!. %in% same_ensembl) %>%
   pull(.)
 
 # A new SingleCellExperiment object was created, where the sum
@@ -79,7 +79,27 @@ sce <- sce %>%
 
 ### Annotate the chromosome including mitochondrial genes
 
+```{r, eval = FALSE}
+map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
+               keytype = "GENEID")
+rowData(sce)$CHR <- map
+rowData(sce)$is_mito <- if_else(rowData(sce)$CHR == "MT", TRUE, FALSE)
+```
+
+> Warning message:
+Unable to map 13156 of 54464 requested IDs.
+
+Note that the number of rows matched the length of `map` though.
+
+## Create SingleCellExperiment objects for each mouse
+
+```{r, eval = FALSE}
+sce_list <- split(sce, sce$sample_id)
+```
+
 ## Import data as SingleCellExperiment objects
+
+
 
 Add instructions for saving data
 

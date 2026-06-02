@@ -14,7 +14,98 @@ Add instructions for importing data
 </details>
 ***
 
+## Ambient RNA detection
+
+The classical plot to evaluate whether there may be Ambient RNA in your sample is the Barcode Rank plot that visualizes the total UMI or read counts for each barcode against the barcode's rank (highest to lowest).
+
+Note that though I'm using all of the samples together to make the plot, [according to the OSCA book](https://bioconductor.org/books/3.13/OSCA.advanced/droplet-processing.html#qc-droplets), we want to run ambient RNA detection tools on each sample separately because each sample will have a unique ambient RNA landscape and the tools (at least many of them) are comparing the total counts for each barcode against the total counts for the suspected ambient RNA population to decide what is an "empty" droplet vs a droplet with the data you want.
+
+This approach utilizes base R to find the total counts and ranks (because `DropletUtils` wasn't installing properly for me at first).
+
+```{r, eval = FALSE}
+# 1. Calculate total counts (UMIs) per barcode (column)
+total_counts <- Matrix::colSums(assays(sce)$counts)
+# 2. Filter out barcodes with 0 counts (for speed)
+total_counts <- total_counts[total_counts > 0]
+# 3. Create a sorted data frame of unique counts and their ranks
+bcranks <- data.frame(
+Total = sort(total_counts, decreasing = TRUE),
+Rank = seq_along(total_counts)
+)
+# 4. Remove duplicates
+bcrank_unique <- bcranks[!duplicated(bcranks$Total), ]
+# 5.
+bcrank_unique %>%
+  ggplot(aes(x=Rank, y = Total)) +
+  geom_point() +
+  xlab("Barcode Rank") +
+  ylab("Total UMI Count") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_bw()
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_7#slide=id.g3e545ed5e7a_0_7")
+```
+
+This approach utilizes `DropletUtils` to compute the sums and barcode ranks
+
+```{r, eval = FALSE}
+ranks <- DropletUtils::barcodeRanks(sce)
+uniq <- !duplicated(ranks$rank)
+ranks_uniq <- ranks[uniq,]
+ranks_uniq %>%
+  ggplot(aes(x = rank, y = total)) +
+  geom_point() +
+  xlab("Barcode Rank") +
+  ylab("Total UMI Count") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_bw()
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_64#slide=id.g3e545ed5e7a_0_64")
+```
+
+Both plots look the same and the tools that I've used either suggest keeping every droplet, or won't run because of ... `SoupX` suggested that the estimated contamination level was high (which is to be expected from `snRNA-seq` data).
+
+Want to run this within a script instead of a non-interactive node for each sample
+
+```{r, eval = FALSE}
+test_sce <- create_SCE(assays(sce_list[["1C"]])$counts)
+
+# Plot total counts ranked
+barcode_rank_plot(test_sce)
+
+# DIEM steps
+diem_sce_1c <- set_debris_test_set(test_sce)
+diem_sce_1c <- filter_genes(diem_sce_1c)
+diem_sce_1c <- get_pcs(diem_sce_1c)
+diem_sce_1c <- init(diem_sce_1c)
+diem_sce_1c <- run_em(diem_sce_1c)
+diem_sce_1c <- assign_clusters(diem_sce_1c)
+diem_sce_1c <- estimate_dbr_score(diem_sce_1c)
+
+# Evaluate debris scores
+sm <- summarize_clusters(diem_sce_1c)
+plot_clust(diem_sce_1c, feat_x = "n_genes", feat_y = "score.debris",
+           log_x = TRUE, log_y = FALSE)
+plot_clust(diem_sce_1c, feat_x = "pct.mt", feat_y = "score.debris",
+           log_x = TRUE, log_y = FALSE)
+
+# Call targets using debris score for single-nucleus data
+diem_sce_1c <- call_targets(diem_sce_1c, thresh_score = 0.5)
+
+# Call targets by removing droplets in debris cluster(s) for single-cell data
+diem_sce_1c <- call_targets(diem_sce_1c, clusters = "debris", thresh = NULL)
+
+```
+
 ## Filter low quality or damaged droplets (if not already done in exploration by perCellQCMetrics)
+
+
 
 (note doublets and transformation may switch in order)
 
