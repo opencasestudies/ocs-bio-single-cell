@@ -20,9 +20,10 @@ keep <- rowSums(assays(sce)$counts > 0) > 10
 table(keep)
 ```
 
->keep
+```
 FALSE  TRUE
 23521 30943
+```
 
 ```{r, eval = FALSE}
 sce_filter <- sce[keep,]
@@ -35,6 +36,7 @@ qcstats <- scuttle::perCellQCMetrics(sce_filter, subsets = list(Mito = which(row
 ```
 
 Warning message about deprecation
+
 > Warning message:
 In .per_cell_qc_metrics(assay(x, assay.type), subsets = subsets,  :
   'perCellQCMetrics' is deprecated.
@@ -48,15 +50,17 @@ remove <- lowFeatures | lowLib | highMito
 table(remove)
 ```
 
->FALSE  TRUE
+```
+FALSE  TRUE
 61046  4943
+```
 
-``{r, eval = FALSE}
+```{r, eval = FALSE}
 filterSuggestions <- list(Features = which(lowFeatures), Library = which(lowLib), Mitochondrial = which(highMito))
 ggVennDiagram(filterSuggestions)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_0#slide=id.g3e7277bd573_0_0")
 ```
 
@@ -69,8 +73,10 @@ qcmetrics <- scrapper::quickRnaQc.se(sce_filter, subsets = list(Mito = which(row
 table(!qcmetrics$keep)
 ```
 
->FALSE  TRUE
+```
+FALSE  TRUE
 61046  4943
+```
 
 We see that this approach is suggesting the removal of the same number of droplets. And from consulting the documentation on the function, it's just a faster/more efficient implementation of the same steps that we did using `scuttle`. This one however, in one line of code, adds `colData` telling us what we should keep in addition to the `sum`, `detected`, and `subset.proportion.Mito` values that the scuttle function previously returned. It also returns the thresholds that it used to from those values to decide on which droplets should be filtered. Previously that required additional `scuttle` functions to do. Both use "adaptive" thresholds that depend upon what is observed in the data and the median absolute deviation that is observed for each metric across all the droplets.
 
@@ -80,7 +86,8 @@ We see that this approach is suggesting the removal of the same number of drople
 metadata(qcmetrics)$qc$thresholds
 ```
 
->$sum
+```
+$sum
 [1] 1089.132
 
 $detected
@@ -89,6 +96,7 @@ $detected
 $subset.proportion
       Mito
 0.01257542
+```
 
 ```{r, eval = FALSE}
 scater::plotColData(qcmetrics, y = "subset.proportion.Mito", colour_by="keep")
@@ -96,7 +104,7 @@ qcmetrics$highMito <- qcmetrics$subset.proportion.Mito >= metadata(qcmetrics)$qc
 plotColData(qcmetrics, y = "subset.proportion.Mito", colour_by = "highMito")
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_5#slide=id.g3e7277bd573_0_5")
 ```
 
@@ -106,7 +114,7 @@ qcmetrics$lowFeature <- qcmetrics$detected <= metadata(qcmetrics)$qc$thresholds$
 plotColData(qcmetrics, y = "detected", colour_by = "lowFeature")
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_12#slide=id.g3e7277bd573_0_12")
 ```
 
@@ -116,7 +124,7 @@ qcmetrics$lowLibrary <- qcmetrics$sum <= metadata(qcmetrics)$qc$thresholds$sum
 plotColData(qcmetrics, y = "sum", colour_by = "lowLibrary")
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_19#slide=id.g3e7277bd573_0_19")
 ```
 
@@ -127,8 +135,10 @@ qcmetrics_block <- quickRnaQc.se(sce_filter, subsets = list(Mito = which(rowData
 table(!qcmetrics_block$keep)
 ```
 
->FALSE  TRUE
+```
+FALSE  TRUE
 61166  4823
+```
 
 We keep a little over 100 droplets we would have otherwise filtered.
 
@@ -156,7 +166,7 @@ gridExtra::grid.arrange(
         ggtitle("Mito proportion"), nrow = 3)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_26#slide=id.g3e7277bd573_0_26")
 ```
 
@@ -180,7 +190,7 @@ gridExtra::grid.arrange(
         ggtitle("Mito proportion"), nrow = 3)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_32#slide=id.g3e7277bd573_0_32")
 ```
 
@@ -208,7 +218,7 @@ gridExtra::grid.arrange(
         ggtitle("Mito proportion"), nrow = 3)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_37#slide=id.g3e7277bd573_0_37")
 ```
 
@@ -217,6 +227,6 @@ filterSampleSuggestions <- list(Features = which(qcmetrics_block$lowFeature), Li
 ggVennDiagram(filterSampleSuggestions)
 ```
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, warning = FALSE, out.width=800}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_42#slide=id.g3e7277bd573_0_42")
 ```
