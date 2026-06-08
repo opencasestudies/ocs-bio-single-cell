@@ -31,8 +31,20 @@ We might use a column margin note to add an equation or some other annotation fo
 :::
 -->
 
+## Handle Replicates (assuming the clusters we've provided are the cell types)
+
+### Option A: pseudobulk
+
+### Option B: average
+
 ## Put the process together with `pipeComp`
 
-## Compute and compare a specific value
+### For each combination of the workflow ...
+
+#### What is the highest expressed gene for each cluster? (What's its expression?)
+
+#### What is the lowest expressed gene for each cluster? (What's its expression?)
+
+#### What's the median gene expression value for each cluster? (What gene(s) is it connected to?)
 
 ***

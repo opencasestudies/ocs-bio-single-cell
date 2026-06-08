@@ -1,6 +1,34 @@
 # **Suggested Homework**
 ***
 
-Perhaps we move one of the "Options" from an earlier section here and suggest that learners refine the pipeline definition and rerun the comparison with that new option?
+*Basic*
+
+Bubble plot heatmap visualization
+
+*Intermediate*
+
+## Add cell type annotations
+
+### Option A: Azimuth
+
+### Option B: Clustering approach
+
+### Compare
+
+## Handle replicates
+
+## Plot Heatmaps
+
+### Heatmap A: no scaling
+
+### Heatmap B: scaling to allow for row-by-row comparisons
+
+### Heatmap C: Bubble plot to show number of cells with expression
+
+## Differential Gene Expression
+
+*Advanced*
+
+Repeat case study with Python (or R if the Python case study) and compare results
 
 ***

@@ -13,19 +13,16 @@ Add instructions for loading data
 </details>
 ***
 
-## Handle Replicates
-
-### Option A: pseudobulk
-
-### Option B: average
-
 ## Heatmaps
 
-### Heatmap A: no scaling
+### Columns are nuclei
 
-### Heatmap B: scaling to allow for row-by-row comparisons
+### Columns are based on clustering clusters
 
-### Heatmap C: Bubble plot to show number of cells with expression
+(We'll provide the clusters and explain how we got them in a click to expand section)
+
+### Columns are nuclei pooled for each sample
+
 
 Add instructions for saving data
 
