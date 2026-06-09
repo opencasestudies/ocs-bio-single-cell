@@ -13,15 +13,273 @@ Add instructions for loading data
 </details>
 ***
 
-Explore the SingleCellExperiment Object
+## Explore the `SingleCellExperiment` Object
+
+### Dimensions: Rows and columns
+
+Rows correspond to features -- another term for genes
+
+Columns correspond to droplets -- right now they're termed "droplets" because we may have empty droplets or doublets. After filtering, these droplets can also be termed nuclei for snRNA-seq data because we assume we've removed the droplets without single nuclei.
+
+* What are the dimensions of the object?
+
+```{r, eval = FALSE}
+dim(snrna_data)
+```
+
+```
+[1] 87308 65989
+```
+
+So that's 87,308 features and 65,989 droplets.
+
+By the time that we're done with filtering, we may have a lot more nuclei than we do genes. This is because single cell data is very sparse typically. More on this later (even within this exploration section), but briefly:
+
+  * Genes currently in the `SingleCellExperiment` object could represent mitochondrial genes -- we don't want those because we're working with single nuclear data
+  * (Add a dropdown section on why single cell data may be interested in mitochondrial reads)
+  * Genes also may be listed more than once right now -- exon and intron versions
+
+We will be filtering out some droplets (empty from ambient RNA detection and doublets from doublet detection), but filtering resources advise liberally keeping droplets when possible.
+
+### Metadata and Data
+
+* Show how to look at the column metadata
+
+```{r, eval = FALSE}
+colData(snrna_data)
+```
+
+```
+DataFrame with 65989 rows and 2 columns
+                 whitelist   sample_id
+                 <logical> <character>
+TTCGCTGCAAGTCGTT      TRUE          1C
+TATGTTCCACTATGTG      TRUE          1C
+AGGGTCCTCCAGCCTT      TRUE          1C
+CACATGACATCGGTTA      TRUE          1C
+GCAGTGGTATCAACGC      TRUE          1C
+...                    ...         ...
+CCTCACAGTCTGTAGT     FALSE          8E
+GAGAAATCAAGTGACG     FALSE          8E
+GCAGCTGAGGCACTAG     FALSE          8E
+GGGCTCATCGAAGTGG     FALSE          8E
+CCGGTGACACTTGAAC     FALSE          8E
+```
+
+What metadata is currently there?
+
+  * `whitelist` is a `salmon alevin` output from alignment and quantification of the reads, suggesting if that program thinks that the droplet should be kept (TRUE) or not (FALSE). We'll compare our final filtering to this later in the Data Wrangling section (or as a basic suggested exercise?).
+  * `sample_id` provides the ID for the samples, relating to which droplets were part of sequencing which samples. (In the narrative, especially make note that the Sample ID information is column metadata meaning that it connects to the droplets rather than the features (rows))
+
+Any additional metadata that we want to add for this dataset will be added to the `colData`. We can access `colData` metadata one of two ways:
+
+  * `colData(snrna_data)$sample_id`
+  * `snrna_data$sample_id`
+
+* Show what samples there are
+
+```{r, eval = FALSE}
+unique(snrna_data$sample_id)
+```
+
+```
+[1] "1C" "2E" "3C" "4E" "5C" "8E"
+```
+
+Note that every Sample ID either has a `C` or an `E` in the ID
+
+```{r, eval = FALSE}
+ncol(snrna_data) == sum(str_detect(snrna_data$sample_id, "C|E"))
+```
+
+```
+[1] TRUE
+```
+
+#### Focus on droplets
+
+* Confirm how many droplets there are
+
+Looking at the number of rows from the `colData` above and our dimensions earlier, we confirm that there are currently 65,989 droplets represented in this dataset.
+
+* Show how many droplets there are per sample
+
+```{r, eval = FALSE}
+table(snrna_data$sample_id)
+```
+
+```
+1C    2E    3C    4E    5C    8E
+11000 10997 10999 10994 11000 10999
+```
+
+(if we add the numbers together from the table, we'll also get the same number of droplets we saw earlier, so every droplet is assigned to a sample).
+
+```{r, eval = FALSE}
+ncol(snrna_data) == sum(table(snrna_data$sample_id))
+```
+
+```
+[1] TRUE
+```
+
+#### Focus on features
+
+* What are stored in the rows?
+
+```{r, eval = FALSE}
+rowData(snrna_data)
+```
+
+```
+DataFrame with 87308 rows and 2 columns
+                                      gene_id      SYMBOL
+                                  <character> <character>
+ENSMUSG00000102693.1     ENSMUSG00000102693.1          NA
+ENSMUSG00000064842.1     ENSMUSG00000064842.1     Gm26206
+ENSMUSG00000102851.1     ENSMUSG00000102851.1     Gm18956
+ENSMUSG00000089699.1     ENSMUSG00000089699.1          NA
+ENSMUSG00000103147.1     ENSMUSG00000103147.1      Gm7341
+...                                       ...         ...
+ENSMUSG00000102011.1-I ENSMUSG00000102011.1-I          NA
+ENSMUSG00000100964.1-I ENSMUSG00000100964.1-I          NA
+ENSMUSG00000099619.6-I ENSMUSG00000099619.6-I          NA
+ENSMUSG00000099399.6-I ENSMUSG00000099399.6-I          NA
+ENSMUSG00000095366.2-I ENSMUSG00000095366.2-I          NA
+```
+
+We see that this is information about the features or the genes.
+
+How do these columns get added to the `SummarizedExperimentObject`? ... need to add
+
+* Where are the gene names?
+
+The gene names are both the `rownames` and stored in the `gene_id` column of the `rowData()` output.
+
+Notice that the gene IDs begin with "ENSMUSG" which tells us that they are Ensembl (`ENS`) *Mus musculus* (`MUS`) stable gene (trailing `G`) IDs.
+
+Source: [https://useast.ensembl.org/Help/Faq?id=488](https://useast.ensembl.org/Help/Faq?id=488)
+
+Every row has that part of the ID at the beginning:
+
+```{r, eval = FALSE}
+sum(str_detect(rownames(snrna_data), "^ENSMUSG")) == nrow(snrna_data)
+```
+
+```
+[1] TRUE
+```
+
+* Show how many genes there are
+
+From the number of rows in the output from `rowData()` as well as the dimension beforehand, there are 87,308 features represented in this data.
+
+However, of these features, some of the "genes" are listed more than once because both its exons and introns are represented. Notice the "-I" above at the end of the `gene_id` column. That signifies an intron.
+
+```{r, eval = FALSE}
+sum(str_detect(rownames(snrna_data), "ENSMUSG00000095366"))
+```
+
+```
+[1] 2
+```
+
+If we look specifically at the genes IDs for those 2 using `which` ...
+
+```{r, eval = FALSE}
+rownames(snrna_data)[which(str_detect(rownames(snrna_data), "ENSMUSG00000095366"))]
+```
+
+```
+[1] "ENSMUSG00000095366.2"   "ENSMUSG00000095366.2-I"
+```
+
+We can look at how many features are representing an intron
+
+```{r, eval = FALSE}
+sum(str_detect(rownames(snrna_data), "-I$"))
+```
+
+```
+[1] 32961
+```
+
+If we were to just focus on the base ID (everything before the `.##` representing the version information for that feature), we can see how many unique genes are represented in this data
+
+To do this, let's remove everything period and after (that includes the numbers and the `-I` when present). This is the same as replacing all of that with an empty string `""`
+
+```{r, eval = FALSE}
+pattern_to_remove <- "\\..*"
+replace_string <- ""
+
+length(unique(sub(pattern_to_remove, replace_string, rownames(snrna_data))))
+```
+
+That leaves us with 54,464 unique genes represented in this data prior to filtering.
+
+```
+[1] 54464
+```
+
+(add a dropdown section about why we might filter genes specifially and not just droplets and point to section in data wrangling that does that)
+
+* Grab a random mitochondrial gene to show that there are some in the data
+
+Random Mitochondrial gene `ENSMUSG00000064351`: [https://useast.ensembl.org/Mus_musculus/Gene/Strain_Compara_Ortholog?g=ENSMUSG00000064351;r=MT:5328-6872;t=ENSMUST00000082402](https://useast.ensembl.org/Mus_musculus/Gene/Strain_Compara_Ortholog?g=ENSMUSG00000064351;r=MT:5328-6872;t=ENSMUST00000082402)
+
+"Mitochondrially encoded cytochrome c oxidase I"
+
+Can confirm this ID is in this dataset
+
+```{r, eval = FALSE}
+sum(str_detect(rownames(snrna_data), "ENSMUSG00000064336"))
+```
+
+```
+[1] 1
+```
+
+But unlike the introns, there's nothing special about the gene ID for us to connect this gene to the Mitochondria.
+
+```{r, eval = FALSE}
+rownames(snrna_data)[which(str_detect(rownames(snrna_data), "ENSMUSG00000064336"))]
+```
+
+```
+[1] "ENSMUSG00000064336.1"
+```
+
+Not even in the gene symbol `rowData()` output column.
+
+```{r, eval = FALSE}
+rowData(snrna_data)[which(str_detect(rownames(snrna_data), "ENSMUSG00000064336")), "SYMBOL"]
+```
+
+```
+ENSMUSG00000064336
+                NA
+```
+
+#### Focus on counts data
 
 * Show how to look at the counts data
-* Show how to look at the column metadata
-* Show what samples there are
-* Show how many genes there are
-* Show that there are a certain number of genes with the "-I" for intron on the name
-* Show that there are genes with the same exon and intron ID except for the `.##-I` stuff
-* Grab a random mitochondrial gene to show that there are some in the data
+
+There are two ways to access the counts data for a `SingleCellExperiment` object.
+
+  * `assays(snrna_data)$counts`
+  * `counts(snrna_data)`
+  * Note that `snrna_data$counts` won't work and returns `NULL`
+
+* Whole numbers or Decimals?
+* Zeros or sparse representation?
+* Quantiles on rowSum --> what is a rowSum representing?
+* Quantiles on colSum --> what is a colSum representing?
+
+## What does this mean for what sort of data wrangling we need to do?
+
 * Discuss the concepts of library size and number of features and explain why for this data we can't directly compute those yet
-* Show how many droplets there are
-* Show how many droplets there are per sample
+
+To work with this data even for filtering, we're going to need to ...
+
+
+Because of downstream tasks we want to do, we'll need to ....
