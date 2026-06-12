@@ -1,40 +1,18 @@
-<!--
-Update the file paths as needed throughout
--->
-
-<!--
-At the end of this section, save incremental data so that users can pause and come back later
--->
-
 # **Data Import**
 ***
 
-<!--
-Describe how to import the case study data files into R or Python
--->
+## Read in data
 
 <!--
-Within your case study project folder,
-put the data files as they came from the source into a 'data/raw/' subfolder
-and use the `here` package. See the following example and update with your data:
+When downloading the data with `zen4R` from zenodo, I got warning messages about file integrity. Had to increase the timeout to 600
 -->
 
-```{r}
-pm <-readr::read_csv(here("data", "raw", "pm25_data.csv"))
+
+```{r, eval = FALSE}
+zenodo_doi <- "10.5281/zenodo.10091236"
+target_directory <- "/fh/fast/leek_j/user/kisaac/ocs_sc/zenodo_files"
+zen4R::download_zenodo(doi = zenodo_doi, path = target_directory, timeout = 600)
+snrna_data <- readRDS(here::here("zenodo_files/sce_mouse_sleep_snrnaseq_complete.rds"))
 ```
-
-<!--
-At the end of the data import section, save the imported data as .rda files
-to allow users to stop and pick up where they left off:
--->
-
-```{r}
-save(pm, file = here::here("data", "imported", "pm25_data_imported.rda"))
-```
-
-<!--
-NOTE that depending on the size of the data for Bio-OCS, the data may not be in the case study project folder directly
-and may need to be imported from an external source
--->
 
 ***

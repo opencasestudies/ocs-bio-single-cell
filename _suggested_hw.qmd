@@ -25,9 +25,33 @@ Perhaps explain how the suggested exercises relate to the common next steps.
 
 ### Beginner
 
+Bubble plot heatmap visualization
+
 ### Intermediate
 
+#### Add cell type annotations
+
+##### Option A: Azimuth
+
+##### Option B: Clustering approach
+
+##### Compare
+
+#### Handle replicates
+
+#### Plot Heatmaps
+
+##### Heatmap A: no scaling
+
+##### Heatmap B: scaling to allow for row-by-row comparisons
+
+##### Heatmap C: Bubble plot to show number of cells with expression
+
+#### Differential Gene Expression
+
 ### Advanced
+
+Repeat case study with Python (or R if the Python case study) and compare results
 
 <!--
 Example from a previous case study: https://www.opencasestudies.org/ocs-bp-co2-emissions/#Suggested_Homework (though this example doesn't include different levels like Beginner, Intermediate, and Advanced)

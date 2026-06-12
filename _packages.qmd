@@ -6,15 +6,59 @@ Fill out the table and add rows as necessary providing a link to the source and 
 
 We will begin by loading the packages that we will need:
 
-```{r}
+```{r, eval = FALSE}
 #add library() calls
 library(here)
+library(tidyverse)
+library(zen4R)
+library(SingleCellExperiment)
+library(tidySingleCellExperiment)
+library(AnnotationDbi)
+library(EnsDb.Mmusculus.v79)
+library(scuttle)
+library(scran)
+library(scater)
+library(scrapper)
+library(Azimuth)
+library(FastCAR)
+library(SoupX)
+library(diem)
+library(scDblFinder)
+library(singleCellTK)
+library(DropletUtils)
+library(ggVennDiagram)
 ```
+
+<!--
+Azimuth needs to be installed from GitHub. It also needed c++ 14 compiler which I handled on rhino with `Sys.setenv(PKG_CXXFLAGS = "-std=c++14")`
+FastCAR also needed to be installed from GitHub
+-->
 
 Package    | Use
 ---------- |-------------
-[{Package Name}]({Documentation URL}){target="_blank"}      | {Package use}
-[{Package Name}]({Documentation URL}){target="_blank"}      | {Package use}
+[here]({Documentation URL}){target="_blank"}      | {Package use}
+[tidyverse]({Documentation URL}){target="_blank"}      | {Package use}
+[zen4R]({Documentation URL}{target="_blank"}) | {Package use}
+[SingleCellExperiment]({Documentation URL}){target="_blank"}      | {Package use}
+[tidySingleCellExperiment](https://bioconductor.org/packages//release/bioc/vignettes/tidySingleCellExperiment/inst/doc/introduction.html){target="_blank"} | Enables using "tidy" manipulation steps for `SingleCellExperiment` objects
+[scuttle]({Documentation URL}){target="_blank"}      | {Package use}
+[scater]({Documentation URL}){target="_blank"}      | {Package use}
+[scran]({Documentation URL}){target="_blank"}      | {Package use}
+[Azimuth]({Documentation URL}){target="_blank"}      | {Package use}
+[scDblFinder]({Documentation URL}){target="_blank"}      | {Package use}
+[ggplot2]({Documentation URL}){target="_blank"}      | {Package use}
+[FastCAR]({Documentation URL}){target="_blank"} or [SoupX]()     | {Package use}
+
+{tbl-colwidths="[33.5,66.5]"}
+
 
 
 The first time we use a function, we will use the `::` to indicate which package we are using. Unless we have overlapping function names, this is not necessary, but we will include it here to be informative about where the functions we will use come from.
+
+
+How are the single cell Bioconductor packages related to each other? Which ones are meant for which tasks?
+
+* scuttle: QC and data wrangling of `SingleCellExperiment` objects
+* scran: Analysis functionality when working with `SingleCellExperiment` objects
+* scater: Plotting functions
+* scrapper: Newer, more efficient implementation of `scuttle` and `scran` functionality
