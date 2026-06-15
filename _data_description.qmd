@@ -20,6 +20,6 @@ The zenodo data and object is the one that the vignette works with. Therefore, I
 
 You can fetch zenodo data with an R package `zen4R` (which is what I did) or using `curl` which is what the vignette did. Going to use `zen4R` for the case study.
 
-(Include in a click to expand section here or earlier what options there are for aligning and counting single cell data)
+(Include in a click to expand section here or earlier about what options there are for aligning and counting single cell data)
 
 ***

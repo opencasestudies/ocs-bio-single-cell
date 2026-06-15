@@ -21,7 +21,7 @@ Rows correspond to features -- another term for genes. At this point though, the
 
 Columns correspond to droplets -- right now they're termed "droplets" because we may have empty droplets or doublets. After filtering, these droplets can also be termed nuclei for snRNA-seq data because we assume we've removed the droplets without single nuclei.
 
-* What are the dimensions of the object?
+> What are the dimensions of the object?
 
 ```{r, eval = FALSE}
 dim(snrna_data)
@@ -44,7 +44,7 @@ We will be filtering out some droplets (empty from ambient RNA detection and dou
 
 ### Metadata and Data
 
-* Show how to look at the column metadata
+> Show how to look at the column metadata
 
 ```{r, eval = FALSE}
 colData(snrna_data)
@@ -79,7 +79,7 @@ Any additional metadata that we want to add for this dataset will be added to th
   * `colData(snrna_data)$sample_id`
   * `snrna_data$sample_id`
 
-* Show what samples there are
+> Show what samples there are
 
 ```{r, eval = FALSE}
 unique(snrna_data$sample_id)
@@ -101,11 +101,11 @@ ncol(snrna_data) == sum(str_detect(snrna_data$sample_id, "C|E"))
 
 #### Focus on droplets
 
-* Confirm how many droplets there are
+> Confirm how many droplets there are
 
 Looking at the number of rows from the `colData` above and our dimensions earlier, we confirm that there are currently 65,989 droplets represented in this dataset.
 
-* Show how many droplets there are per sample
+> Show how many droplets there are per sample
 
 ```{r, eval = FALSE}
 table(snrna_data$sample_id)
@@ -128,7 +128,7 @@ ncol(snrna_data) == sum(table(snrna_data$sample_id))
 
 #### Focus on features
 
-* What are stored in the rows?
+> What are stored in the rows?
 
 ```{r, eval = FALSE}
 rowData(snrna_data)
@@ -155,7 +155,7 @@ We see that this is information about the features or the genes.
 
 How do these columns get added to the `SummarizedExperimentObject`? ... need to add
 
-* Where are the gene names?
+> Where are the gene names?
 
 The gene names are both the `rownames` and stored in the `gene_id` column of the `rowData()` output.
 
@@ -173,7 +173,7 @@ sum(str_detect(rownames(snrna_data), "^ENSMUSG")) == nrow(snrna_data)
 [1] TRUE
 ```
 
-* Show how many genes there are
+> Show how many genes there are
 
 From the number of rows in the output from `rowData()` as well as the dimension beforehand, there are 87,308 features represented in this data.
 
@@ -197,7 +197,7 @@ rownames(snrna_data)[which(str_detect(rownames(snrna_data), "ENSMUSG00000095366"
 [1] "ENSMUSG00000095366.2"   "ENSMUSG00000095366.2-I"
 ```
 
-We can look at how many features are representing an intron
+> We can look at how many features are representing an intron
 
 ```{r, eval = FALSE}
 sum(str_detect(rownames(snrna_data), "-I$"))
@@ -226,7 +226,7 @@ That leaves us with 54,464 unique genes represented in this data prior to filter
 
 (add a dropdown section about why we might filter genes specifially and not just droplets and point to section in data wrangling that does that)
 
-* Grab a random mitochondrial gene to show that there are some in the data
+> Grab a random mitochondrial gene to show that there are some in the data
 
 Random Mitochondrial gene `ENSMUSG00000064351`: [https://useast.ensembl.org/Mus_musculus/Gene/Strain_Compara_Ortholog?g=ENSMUSG00000064351;r=MT:5328-6872;t=ENSMUST00000082402](https://useast.ensembl.org/Mus_musculus/Gene/Strain_Compara_Ortholog?g=ENSMUSG00000064351;r=MT:5328-6872;t=ENSMUST00000082402)
 
@@ -265,7 +265,7 @@ ENSMUSG00000064336
 
 #### Focus on counts data
 
-* Show how to look at the counts data
+> Show how to look at the counts data
 
 There are three ways to access the counts data for a `SingleCellExperiment` object.
 
@@ -291,7 +291,7 @@ ENSMUSG00000100964.1-I                .                .                .       
 ENSMUSG00000099619.6-I                .                .                .                .    ...
 ENSMUSG00000099399.6-I                .                .                .                .    ...
 ```
-* Zeros or sparse representation?
+> Zeros or sparse representation?
 
 The preview tells you that this is a "sparse" matrix meaning that it doesn't store zeros, instead storing only non-zero values as well as locations where those non-zero values belong in the matrix. Instead of displaying a zero, it will display a `.` when you view the object/matrix.
 
@@ -308,7 +308,7 @@ prod(dim(snrna_data)) - length(non_zero_vals)
 5579821106
 ```
 
-* Whole numbers or decimals?
+> Whole numbers or decimals?
 
 Surprisingly, the counts matrix does not store whole numbers / integers only, but rather it can contain decimal values (also known as "doubles" in R). That's because salmon is finding gene level estimates
 
@@ -336,7 +336,7 @@ sum(non_zero_vals %% 1 == 0) #these are the number of estimates that are whole n
 ```
 
 ```{r, eval = FALSE}
-> 181546506 - 142611235 # these are the number of estimates that are decimals
+181546506 - 142611235 # these are the number of estimates that are decimals
 ```
 
 ```
@@ -354,7 +354,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 :::
 
 
-* `rowSums` ... what does it represent? quantiles?
+> `rowSums` ... what does it represent? quantiles?
 
 `rowSums()` is representing the sum of counts for a feature across droplets.
 
@@ -403,7 +403,7 @@ rowSums(assays(snrna_data)$counts > 0) > 10
  ....
 ```
 
-* `colSums` ... what does it represent? quantiles?
+> `colSums` ... what does it represent? quantiles?
 
 ```{r, eval = FALSE}
 quantile(colSums(assays(snrna_data)$counts))
