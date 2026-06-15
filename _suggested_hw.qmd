@@ -1,34 +1,60 @@
-# **Suggested Homework**
+# **Continued Learning**
 ***
 
-*Basic*
+:::{.next_steps_box}
+::::{.next_steps_box_header}
+Common Next Steps
+::::
+::::{.inner_block}
+Discuss common next steps for this type of an analysis in this box. Is there a specific number of steps that you need to do before a specific step? Is a "next step" more of an alternate step?
+::::
+:::
+
+<!--
+## Reinforcement Exercises
+
+Uncomment this section if you're suggesting an exercise that reiterates a large portion of the case study so learners can practice a hard skill again, reinforcing topics from the case study
+-->
+
+
+## Advancement Exercises
+
+Use this section to suggest different levels of exercises that build upon topics from the case study ... next steps, tangential skills, diving deeper into a side quest, etc.
+
+Perhaps explain how the suggested exercises relate to the common next steps.
+
+### Beginner
 
 Bubble plot heatmap visualization
 
-*Intermediate*
+### Intermediate
 
-## Add cell type annotations
+#### Add cell type annotations
 
-### Option A: Azimuth
+##### Option A: Azimuth
 
-### Option B: Clustering approach
+##### Option B: Clustering approach
 
-### Compare
+##### Compare
 
-## Handle replicates
+#### Handle replicates
 
-## Plot Heatmaps
+#### Plot Heatmaps
 
-### Heatmap A: no scaling
+##### Heatmap A: no scaling
 
-### Heatmap B: scaling to allow for row-by-row comparisons
+##### Heatmap B: scaling to allow for row-by-row comparisons
 
-### Heatmap C: Bubble plot to show number of cells with expression
+##### Heatmap C: Bubble plot to show number of cells with expression
 
-## Differential Gene Expression
+#### Differential Gene Expression
 
-*Advanced*
+### Advanced
 
 Repeat case study with Python (or R if the Python case study) and compare results
+
+<!--
+Example from a previous case study: https://www.opencasestudies.org/ocs-bp-co2-emissions/#Suggested_Homework (though this example doesn't include different levels like Beginner, Intermediate, and Advanced)
+-->
 
 ***
