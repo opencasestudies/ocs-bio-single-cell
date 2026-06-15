@@ -20,7 +20,7 @@ Provide the definition here
 
 Add a simplified version of this image
 
-```{r, echo = FALSE
+```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_0#slide=id.g3e545ed5e7a_0_0")
 ```
 

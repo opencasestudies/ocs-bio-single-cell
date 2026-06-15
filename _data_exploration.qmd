@@ -416,7 +416,7 @@ quantile(colSums(assays(snrna_data)$counts))
 
 `colSums()` is representing the sum of counts across features within a droplet. This is a proxy for library size. But not exactly library size until we handle having both introns and exons represented in the data.
 
-```{r, echo = FALSE
+```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_8#slide=id.g3ea117cd814_0_8")
 ```
 
@@ -450,7 +450,7 @@ quantile(colSums(assays(snrna_data)$counts > 0))
 
 This is a proxy for the number of detected genes, but again we'll first have to handle having both exons and introns represented in the data.
 
-```{r, echo = FALSE
+```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_15#slide=id.g3ea117cd814_0_15")
 ```
 
