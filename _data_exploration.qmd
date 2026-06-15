@@ -414,7 +414,11 @@ quantile(colSums(assays(snrna_data)$counts))
 196   2968   3897   5296 174878
 ```
 
-`colSums()` is representing the sum of counts across features within a droplet.
+`colSums()` is representing the sum of counts across features within a droplet. This is a proxy for library size. But not exactly library size until we handle having both introns and exons represented in the data.
+
+```{r, echo = FALSE
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_8#slide=id.g3ea117cd814_0_8")
+```
 
 Note we're still working with features (because we have a mix of introns and exons) and droplets because we haven't filtered the data to a point where we can confidently say we're working with single nuclear data yet)
 
@@ -442,6 +446,12 @@ quantile(colSums(assays(snrna_data)$counts > 0))
 ```
 0%   25%   50%   75%  100%
 201  2073  2510  3172 17369
+```
+
+This is a proxy for the number of detected genes, but again we'll first have to handle having both exons and introns represented in the data.
+
+```{r, echo = FALSE
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_15#slide=id.g3ea117cd814_0_15")
 ```
 
 ## What does this mean for what sort of data wrangling we need to do?
