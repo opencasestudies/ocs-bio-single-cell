@@ -17,7 +17,7 @@ Add instructions for loading data
 
 ### Dimensions: Rows and columns
 
-Rows correspond to features -- another term for genes
+Rows correspond to features -- another term for genes. At this point though, they may represent exons or introns since we're working with single nuclear data.
 
 Columns correspond to droplets -- right now they're termed "droplets" because we may have empty droplets or doublets. After filtering, these droplets can also be termed nuclei for snRNA-seq data because we assume we've removed the droplets without single nuclei.
 
@@ -33,11 +33,12 @@ dim(snrna_data)
 
 So that's 87,308 features and 65,989 droplets.
 
-By the time that we're done with filtering, we may have a lot more nuclei than we do genes. This is because single cell data is very sparse typically. More on this later (even within this exploration section), but briefly:
+By the time that we're done with filtering, we expect to have a lot more nuclei than we do genes. This is because single cell data is very sparse typically. More on this later (even within this exploration section), but briefly:
 
   * Genes currently in the `SingleCellExperiment` object could represent mitochondrial genes -- we don't want those because we're working with single nuclear data
   * (Add a dropdown section on why single cell data may be interested in mitochondrial reads)
   * Genes also may be listed more than once right now -- exon and intron versions
+  * There could be non-informative genes (low or no counts across droplets)
 
 We will be filtering out some droplets (empty from ambient RNA detection and doublets from doublet detection), but filtering resources advise liberally keeping droplets when possible.
 
@@ -70,6 +71,8 @@ What metadata is currently there?
 
   * `whitelist` is a `salmon alevin` output from alignment and quantification of the reads, suggesting if that program thinks that the droplet should be kept (TRUE) or not (FALSE). We'll compare our final filtering to this later in the Data Wrangling section (or as a basic suggested exercise?).
   * `sample_id` provides the ID for the samples, relating to which droplets were part of sequencing which samples. (In the narrative, especially make note that the Sample ID information is column metadata meaning that it connects to the droplets rather than the features (rows))
+
+Note that the row names for the metadata above are the droplet IDs or "cell barcodes". They look like a DNA sequence and that's because they represent the specific nucleotide sequences attached to beads in each droplet that allow for molecules to be tagged or identified as originating from the same cell: https://www.10xgenomics.com/blog/how-does-single-cell-rna-seq-work
 
 Any additional metadata that we want to add for this dataset will be added to the `colData`. We can access `colData` metadata one of two ways:
 
@@ -264,22 +267,196 @@ ENSMUSG00000064336
 
 * Show how to look at the counts data
 
-There are two ways to access the counts data for a `SingleCellExperiment` object.
+There are three ways to access the counts data for a `SingleCellExperiment` object.
 
   * `assays(snrna_data)$counts`
+  * `assay(snrna_data, "counts")`
   * `counts(snrna_data)`
   * Note that `snrna_data$counts` won't work and returns `NULL`
 
-* Whole numbers or Decimals?
+![](img/sparseMatrix.png)
+
+```
+87308 x 65989 sparse Matrix of class "dgCMatrix"
+                     TTCGCTGCAAGTCGTT TATGTTCCACTATGTG AGGGTCCTCCAGCCTT CACATGACATCGGTTA      ...
+ENSMUSG00000102693.1                .                .                .                .      ...
+ENSMUSG00000064842.1                .                .                .                .      ...
+ENSMUSG00000102851.1                .                .                .                .      ...
+ENSMUSG00000089699.1                .                .                .                .      ...
+ENSMUSG00000103147.1                .                .                .                .      ...
+...                               ...              ...              ...              ...      ...
+ENSMUSG00000100608.1-I                .                .                .                .    ...
+ENSMUSG00000102011.1-I                .                .                .                .    ...
+ENSMUSG00000100964.1-I                .                .                .                .    ...
+ENSMUSG00000099619.6-I                .                .                .                .    ...
+ENSMUSG00000099399.6-I                .                .                .                .    ...
+```
 * Zeros or sparse representation?
-* Quantiles on rowSum --> what is a rowSum representing?
-* Quantiles on colSum --> what is a colSum representing?
+
+The preview tells you that this is a "sparse" matrix meaning that it doesn't store zeros, instead storing only non-zero values as well as locations where those non-zero values belong in the matrix. Instead of displaying a zero, it will display a `.` when you view the object/matrix.
+
+Point to and explain this documentation: [https://www.rdocumentation.org/packages/Matrix/versions/1.7-4/topics/sparseMatrix](https://www.rdocumentation.org/packages/Matrix/versions/1.7-4/topics/sparseMatrix)
+
+There are a lot of zero values in this data!! Very sparse!
+
+```{r, eval = FALSE}
+non_zero_vals <- counts(snrna_data)@x #grabs just the non-zero data
+prod(dim(snrna_data)) - length(non_zero_vals)
+```
+
+```
+5579821106
+```
+
+* Whole numbers or decimals?
+
+Surprisingly, the counts matrix does not store whole numbers / integers only, but rather it can contain decimal values (also known as "doubles" in R). That's because salmon is finding gene level estimates
+
+Resources:
+
+  * https://www.seqanswers.com/forum/bioinformatics/bioinformatics-aa/326416-nf-core-rnaseq-produces-non-integer-counts-in-salmon-merged-gene_counts-tsv
+  * https://pmc.ncbi.nlm.nih.gov/articles/PMC6437997/
+
+That's not to say there aren't whole numbers .... it's just that there are decimals too
+
+```{r, eval = FALSE}
+length(non_zero_vals) #this is the number of value that aren't zero
+```
+
+```
+[1] 181546506
+```
+
+```{r, eval = FALSE}
+sum(non_zero_vals %% 1 == 0) #these are the number of estimates that are whole numbers
+```
+
+```
+[1] 142611235
+```
+
+```{r, eval = FALSE}
+> 181546506 - 142611235 # these are the number of estimates that are decimals
+```
+
+```
+[1] 38935271
+```
+
+:::{.emphasis_block}
+<details><summary>Visualizing these "counts" ...</summary>
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_0#slide=id.g3ea117cd814_0_0")
+```
+
+</details>
+:::
+
+
+* `rowSums` ... what does it represent? quantiles?
+
+`rowSums()` is representing the sum of counts for a feature across droplets.
+
+```{r, eval = FALSE}
+quantile(rowSums(assays(snrna_data)$counts))
+```
+
+```
+0%          25%          50%          75%         100%
+0.0000       0.0000      20.0000     883.4077 4036226.0377
+```
+
+We see that some features have 0 counts across droplets. These are non-informative features where we won't be able to distinguish expression levels or patterns and how they might change according to condition, diagnosis, or treatment. Genes with consistently low counts (greater than 0) can still be non-informative, so often researchers will use a threshold approach to make sure that a sufficient number of droplets have at least a certain number of a counts (or greater) for features and filter out ones that don't. A `rowSums` approach is necessary for this, and while it is still summing counts, those counts are compared to a threshold such that the following example will return a sum of TRUEs (1's) and FALSEs (0's) which are reporting if the observed number of counts is greater than the observed for each droplet for each feature. Specifically, for that feature, how many droplets have observed counts greater than the threshold.
+
+```{r, eval = FALSE}
+rowSums(assays(snrna_data)$counts > 0)
+```
+
+```
+ ENSMUSG00000102693.1  ENSMUSG00000064842.1  ENSMUSG00000102851.1  ENSMUSG00000089699.1  ENSMUSG00000103147.1
+                    2                     0                    48                     0                    11
+ ENSMUSG00000102348.1  ENSMUSG00000102592.1  ENSMUSG00000104238.1  ENSMUSG00000102269.1  ENSMUSG00000096126.1
+                   52                     0                    44                     1                     0
+ ENSMUSG00000102735.1  ENSMUSG00000103922.1 ENSMUSG00000025903.14  ENSMUSG00000104217.1 ENSMUSG00000033813.15
+                    5                    32                  2963                   210                  3604
+ ENSMUSG00000085623.1  ENSMUSG00000091665.1 ENSMUSG00000033793.12  ENSMUSG00000104046.1  ENSMUSG00000102907.1
+                   80                    31                 12286                    27                     1
+ ....
+```
+
+Finally, this rowSum may use a second threshold to return for each feature a TRUE or FALSE, reporting if that feature has at least a certain number of droplets meeting the count threshold.
+
+```{r, eval=FALSE}
+rowSums(assays(snrna_data)$counts > 0) > 10
+```
+
+```
+ ENSMUSG00000102693.1  ENSMUSG00000064842.1  ENSMUSG00000102851.1  ENSMUSG00000089699.1  ENSMUSG00000103147.1
+                FALSE                 FALSE                  TRUE                 FALSE                  TRUE
+ ENSMUSG00000102348.1  ENSMUSG00000102592.1  ENSMUSG00000104238.1  ENSMUSG00000102269.1  ENSMUSG00000096126.1
+                 TRUE                 FALSE                  TRUE                 FALSE                 FALSE
+ ENSMUSG00000102735.1  ENSMUSG00000103922.1 ENSMUSG00000025903.14  ENSMUSG00000104217.1 ENSMUSG00000033813.15
+                FALSE                  TRUE                  TRUE                  TRUE                  TRUE
+ ENSMUSG00000085623.1  ENSMUSG00000091665.1 ENSMUSG00000033793.12  ENSMUSG00000104046.1  ENSMUSG00000102907.1
+                 TRUE                  TRUE                  TRUE                  TRUE                 FALSE
+ ....
+```
+
+* `colSums` ... what does it represent? quantiles?
+
+```{r, eval = FALSE}
+quantile(colSums(assays(snrna_data)$counts))
+```
+
+```
+0%    25%    50%    75%   100%
+196   2968   3897   5296 174878
+```
+
+`colSums()` is representing the sum of counts across features within a droplet.
+
+Note we're still working with features (because we have a mix of introns and exons) and droplets because we haven't filtered the data to a point where we can confidently say we're working with single nuclear data yet)
+
+`colSums()` can be used with a similar thresholding approach to see how many features are detected in a droplet
+
+```{r, eval = FALSE}
+colSums(assays(snrna_data)$counts > 0)
+```
+
+```
+TTCGCTGCAAGTCGTT TATGTTCCACTATGTG AGGGTCCTCCAGCCTT CACATGACATCGGTTA GCAGTGGTATCAACGC CCACGAGCACACGGTC
+           11089            11953            11163             9588            13391             8456
+TCCTAATAGAACGCGT TATCCTATCCTTGACC GGGACTCCACCACTGG CATGGTACATGGTACT AAGCAGTGGTATCAAC TCGACGGGTAGTGCGA
+            8482             8542             8143             9301            14896             8390
+GTGGTTAAGTCCTGCG ATACCTTGTGATACCT AACAAAGCACACGCCA CAGTGGTATCAACGCA GTTACCCCAACACTAC ACTTTCAGTGTTGATC
+            9375             9650             8087             9313             8800             9451
+CCACGTTAGCTACGTT TCTACATGTTGCTGAT GCGGATCGTTCAGTAC GTGGTATCAACGCAGA GACTTCCTCCAACTAG TACATTCGTGCGTGCT
+            8798             7849             9185            13867             8042             6924
+```
+
+```{r, eval = FALSE}
+quantile(colSums(assays(snrna_data)$counts > 0))
+```
+
+```
+0%   25%   50%   75%  100%
+201  2073  2510  3172 17369
+```
 
 ## What does this mean for what sort of data wrangling we need to do?
+
+:::{.column_margin}
+Is there anything special I need to do in the data wrangling to account for `salmon` alevin returning a combination of integers and doubles for the gene estimates?
+:::
+
+(will fill in this section for the narrative draft)
 
 * Discuss the concepts of library size and number of features and explain why for this data we can't directly compute those yet
 
 To work with this data even for filtering, we're going to need to ...
 
+  * We will need to combine intron and exon data for each gene with data for both
+  * Certain filtering tasks (ambient RNA detection being one) will need to consider samples separately, so we'll need to split the sample data into different summarized experiment objects
 
 Because of downstream tasks we want to do, we'll need to ....
