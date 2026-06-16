@@ -456,7 +456,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 
 ## What does this mean for what sort of data wrangling we need to do?
 
-:::{.column_margin}
+:::{.column-margin}
 Is there anything special I need to do in the data wrangling to account for `salmon` alevin returning a combination of integers and doubles for the gene estimates?
 :::
 
