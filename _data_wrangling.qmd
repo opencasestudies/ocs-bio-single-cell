@@ -24,8 +24,9 @@ Steps in this section
 ```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_22#slide=id.g3ea117cd814_0_22")
 ```
+## Part 1: Data Preparation
 
-## Handling Introns, Exons, and Mitochondrial genes
+### Handling Introns and Exons
 
 ```{r, eval = FALSE}
 # Extract Exon Ensembl IDs and associated count data
@@ -115,7 +116,7 @@ rm(same_ensembl)
 rm(snrna_data_ids_subset)
 ```
 
-## Create SingleCellExperiment objects for each mouse
+### Create SingleCellExperiment objects for each mouse
 
 Ambient RNA detection is run on each sample separately, so we want to separate out the samples
 
@@ -129,7 +130,13 @@ names(sce_list)
 [1] "X1C" "X2E" "X3C" "X4E" "X5C" "X8E"
 ```
 
-## Ambient RNA detection
+Add instructions on saving data in case people take a break here.
+
+## Part 2: Quality Control
+
+Add instructions on importing data in case people took a break and pick back up here.
+
+### Ambient RNA detection
 
 Note that Ambient RNA detection should occur before any other filtering (I think even before filtering of non-informative (count 0) genes) because the algorithms rely on being able to model the background distribution of reads.
 
@@ -224,11 +231,11 @@ diem_sce_1c <- call_targets(diem_sce_1c, clusters = "debris", thresh = NULL)
 
 Likely will provide filtering output suggestions from DIEM (if there are any) to learners using a cooking show approach rather than having them run it themselves.
 
-## Filter non-informative genes
+### Filter for non-informative genes
 
 ```{r, eval = FALSE}
-keep_informative <- rowSums(assays(sce)$counts > 0) > 10
-table(keep_informative)
+rowData(sce)$keep_informative <- rowSums(assays(sce)$counts > 0) > 10
+table(rowData(sce)$keep_informative)
 ```
 
 ```
@@ -248,7 +255,9 @@ Note that my computational environment struggles unless I constantly overwrite s
 * avoid writing intermediates (like `sce_filter`)
 
 
-## Use perCellQCMetrics to identify low quality or damaged droplets
+### Use perCellQCMetrics to identify low quality or damaged droplets
+
+(rename this heading because of need for different function)
 
 ```{r, eval = FALSE}
 qcmetrics <- scuttle::perCellQCMetrics(sce, subsets = list(Mito = which(rowData(sce)$is_mito)))
@@ -295,6 +304,10 @@ Note: I'm not necessarily planning to show the whole evolution of planning to us
 sce <- scrapper::quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)))
 table(!sce$keep)
 ```
+
+:::{.column-margin}
+When working through single cell data with Galaxy tutorials, and working with spatial data for another case study, I've seen two sided filters for the number of genes/features and library size where it's not just excluding droplets with a certain value below a minimum, but also excluding those with a certain value above a maximum. However, I haven't seen any OSCA or OSCA related tutorials doing a similar thing. The authors in their vignette also only show a lower test. Should I be utilizing a maximum filter too? The default `scrapper` package behavior is to only look at the lower limits for `sum` and `detected`.
+:::
 
 ```
 FALSE  TRUE
@@ -398,7 +411,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 </details>
 :::
 
-What if our filtering were aware of the sample ID information?
+#### What if this low quality filtering were aware of the sample ID information?
 
 Let's save the old output (so we can compare suggested thresholding later), by renaming the column names and metadata
 
@@ -518,52 +531,151 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 
 note that the [advanced section of the OSCA book](https://bioconductor.org/books/3.14/OSCA.advanced/single-nuclei-rna-seq-processing.html#quality-control-for-stripped-nuclei) suggests that this adaptive thresholding approach may not work for single nuclear data, specifically with respect to mitochondrial reads, because the MAD may be too close to zero and then too much is getting filtered out. Another important note is [mentioned here in this paper](https://link.springer.com/protocol/10.1007/978-1-0716-1307-8_19#Sec23) that certain types of data are going to have much higher mitochondrial activity and that should be taken into account when setting a threshold
 
+### Identify doublets for removal
+
+Note that the approach the paper used was to first normalize the data, then find the top variable genes, then compute the doublet density estimate/scores, and using the Griffiths method for thresholding to flag doublets. This mirrors the old scran approach that is now deprecated
+
+* https://rissolab.github.io/AtlasCortexSD/articles/1_ct_anno.html#doublets-removal
+* https://plger.github.io/scDblFinder/articles/introduction.html#computedoubletdensity
+
+I chose to use this more streamlined approach rather than the approach the paper used for a couple of reasons
+
+* The paper approach would have required running normalization first (and I can use this opportunity to explain the nuance that some doublet detection tools/methods require that)
+* The tool documentation recommends this approach over the Griffiths method saying it's the most accurate in their benchmarking
+* I didn't see any snRNA-seq specific advice
+
+This approach does have a clustering option, but the package maintainers suggest using it if your data very clearly clusters or you're interested in where the doublets originated from. https://plger.github.io/scDblFinder/articles/scDblFinder.html#should-i-use-the-cluster-based-doublet-generation-or-not
+
 :::{.column-margin}
-When working through single cell data with Galaxy tutorials, and working with spatial data for another case study, I've seen two sided filters for the number of genes/features and library size where it's not just excluding droplets with a certain value below a minimum, but also excluding those with a certain value above a maximum. However, I haven't seen any OSCA or OSCA related tutorials doing a similar thing. The authors in their vignette also only show a lower test. Should I be utilizing a maximum filter too? The default `scrapper` package behavior is to only look at the lower limits for `sum` and `detected`.
+In your expert opinion, is there any problem with using `scDblFinder` rather than the `computeDoubletDensity` and Griffiths method approach?
 :::
 
-## Identify doublets for removal
+```{r, eval = FALSE}
+set.seed(8902) #need to set random seed because of the simulation this tool is doing
+sce <- scDblFinder::scDblFinder(sce, samples="sample_id")
+```
 
+Warning messages
 
-## Applying the filters ....
+```
+Warning messages:
+1: In .checkSCE(sce, coerce = is.null(samples)) :
+  Some cells in `sce` have an extremely low read counts; note that these could trigger errors and might best be filtered out
+2: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+3: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+4: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+5: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+6: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+7: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+8: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+9: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+10: In .checkSCE(sce, coerce = is.null(samples)) :
+  Some cells in `sce` have an extremely low read counts; note that these could trigger errors and might best be filtered out
+11: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+12: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+13: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+14: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+```
+
+```{r, eval = FALSE}
+table(colData(sce)$scDblFinder.class)
+```
+
+```
+singlet doublet
+  60860    5129
+```
+
+Notice that we've saved all of the necessary quality filtering flags in either the `rowData` (for non-informative gene filtering) or `colData` for droplet filtering.
+
+Add instructions for saving data in case people take a break
+
+## Part 3: Applying QC Filters and Normalization
+
+Add instructions for loading data in case people take a break and come back here
+
+### Applying the filters ....
 
 :::{.column-margin}
-I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40
+I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40 but then I'm also getting a warning from the package when I run the function saying there are cells with extremely low counts. And I see other people on forums recommending that I should remove ambient RNA flagged droplets prior to doublet detection
 :::
 
 Add another Venn Diagram showing which droplets are filtered out according to which filter methods
 
+```{r, eval = FALSE}
+filterSuggestions <- list(MAD_thresholding = which(!sce$keep), doublets = which(sce$scDblFinder.class == "doublet"))
+ggVennDiagram(filterSuggestions)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_47#slide=id.g3ec2fe01f05_1_47")
+```
+
 How do the suggested filters from our process compare to the whitelist output from salmon alevin?
 
-### Gene-level filtering
-
 ```{r, eval = FALSE}
-sce <- sce[keep_informative,] #non-informative gene filter
+keepSuggestions <- list(qcKeep = which(sce$keep & (sce$scDblFinder.class == "singlet")), salmonKeep = which(sce$whitelist))
+ggVennDiagram(keepSuggestions)
 ```
 
-### Droplet-level filtering
-
 ```{r, eval = FALSE}
-combined_keep <-
+ottrpal::include_slide('https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_52#slide=id.g3ec2fe01f05_1_52')
 ```
 
+#### Droplet-level filtering
 
+```{r, eval = FALSE}
+sce$combined_keep <- sce$keep & (sce$scDblFinder.class == "singlet") #add in ambient RNA detection filter here too after diem run
+sce <- sce[,sce$combined_keep]
+```
 
-### New Dimensions
+#### Gene-level filtering
+
+```{r, eval = FALSE}
+sce <- sce[rowData(sce)$keep_informative,] #non-informative gene filter
+```
+
+#### New Dimensions
 
 ```{r, eval = FALSE}
 dim(sce)
 ```
 
 ```
-[1] FILL IN
+[1] 30943 56537
 ```
 
-## Transformation
+Now we have many more nuclei than genes. More than twice the number of nuclei compared to genes. And we can be more confident in describing the rows as genes rather than features and the columns as nuclei rather than droplets.
 
-### Option A: logNormCounts
+### Transformation
 
-### Option B: account for nuclei size
+#### Option A: logNormCounts
+
+#### Option B: account for nuclei size
 
 Deconvolution
 
@@ -571,5 +683,37 @@ Deconvolution
 Since quick clustering is being used within this approach to group cells of similar expression profiles, is it ever recommended to perform cell type assignment prior to deconvolution normalization?
 :::
 
+
+## Summary of the order of steps that I expect for this section in the end ....
+
+Option A:
+
+1. Handle Introns and Exons
+2. Mark Mitochondrial Genes
+3. Ambient RNA detection with `diem`
+4. Ambient RNA flagged droplet removal?
+5. Non-informative gene flagging
+6. removal of non-informative genes?
+7. Low quality or damaged droplet QC MAD thresholding using `scrapper` (low library, low features, high mitochondrial)
+8. filtering or low quality or damaged droplets?
+9. doublet identification with `scDblFinder`
+10. doublet removal
+11. Normalization (noting that normalization may be necessary prior to using some doublet detection tools)
+
+Option B:
+
+1. Handle Introns and Exons
+2. Mark Mitochondrial Genes
+3. Ambient RNA detection with `diem`
+4. Non-informative gene flagging
+5. Low quality or damaged droplet QC MAD thresholding using `scrapper` (low library, low features, high mitochondrial)
+6. doublet identification with `scDblFinder`
+7. Combine filters for droplets (ambient RNA, doublets, MAD thresholding) and filter
+8. Filter non-informative genes
+9. Normalization (noting that normalization may be necessary prior to using some doublet detection tools, but redo it after filtering too)
+
+Option C:
+
+Expert recommendations?
 
 ***
