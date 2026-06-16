@@ -97,6 +97,24 @@ Unable to map 13156 of 54464 requested IDs.
 
 Note that the number of rows matched the length of `map` though.
 
+Let's reclaim some environment space since we won't need `snrna_data` again ... removing the large data sets.
+
+```{r, eval = FALSE}
+rm(snrna_data)
+rm(exon_data)
+rm(intron_data)
+```
+
+We can also remove some of the less large, but still sizable objects which are unnecessary moving forward
+
+```{r, eval = FALSE}
+rm(exon_ids)
+rm(intron_ids)
+rm(map)
+rm(same_ensembl)
+rm(snrna_data_ids_subset)
+```
+
 ## Create SingleCellExperiment objects for each mouse
 
 Ambient RNA detection is run on each sample separately, so we want to separate out the samples
@@ -337,9 +355,52 @@ plotColData(sce, y = "sum", colour_by = "lowLibrary")
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_19#slide=id.g3e7277bd573_0_19")
 ```
 
+:::{.emphasis_block}
+<details><summary>Alternate QC visualizations</summary>
+
+sum vs detected
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "detected", colour_by = "keep")
+plotColData(sce, x = "sum", y = "detected", colour_by = "lowLibrary")
+plotColData(sce, x = "sum", y = "detected", colour_by = "lowFeature")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_32#slide=id.g3e545ed5e7a_0_32")
+```
+
+sum vs mito
+
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "keep")
+plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "lowLibrary")
+plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "highMito")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_37#slide=id.g3e545ed5e7a_0_37")
+```
+
+detected vs mito
+
+```{r, eval = FALSE}
+plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "keep")
+plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "lowFeature")
+plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "highMito")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_59#slide=id.g3e545ed5e7a_0_59")
+```
+
+</details>
+:::
+
 What if our filtering were aware of the sample ID information?
 
-Let's save the old output (so if we want to compare), by renaming the column names
+Let's save the old output (so we can compare suggested thresholding later), by renaming the column names and metadata
 
 ```{r, eval = FALSE}
 colData(sce) <- colData(sce) %>%
@@ -458,22 +519,45 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 note that the [advanced section of the OSCA book](https://bioconductor.org/books/3.14/OSCA.advanced/single-nuclei-rna-seq-processing.html#quality-control-for-stripped-nuclei) suggests that this adaptive thresholding approach may not work for single nuclear data, specifically with respect to mitochondrial reads, because the MAD may be too close to zero and then too much is getting filtered out. Another important note is [mentioned here in this paper](https://link.springer.com/protocol/10.1007/978-1-0716-1307-8_19#Sec23) that certain types of data are going to have much higher mitochondrial activity and that should be taken into account when setting a threshold
 
 :::{.column-margin}
-When working through single cell data with Galaxy tutorials, and working with spatial data for another case study, I've seen two sided filters for the number of genes/features and library size where it's not just excluding droplets with a certain value below a minimum, but also excluding those with a certain value above a maximum. However, I haven't seen any OSCA or OSCA related tutorials doing a similar thing. The authors in their vignette also only show a lower test. Should I be utilizing a maximum filter too?
+When working through single cell data with Galaxy tutorials, and working with spatial data for another case study, I've seen two sided filters for the number of genes/features and library size where it's not just excluding droplets with a certain value below a minimum, but also excluding those with a certain value above a maximum. However, I haven't seen any OSCA or OSCA related tutorials doing a similar thing. The authors in their vignette also only show a lower test. Should I be utilizing a maximum filter too? The default `scrapper` package behavior is to only look at the lower limits for `sum` and `detected`.
 :::
 
+## Identify doublets for removal
+
+
 ## Applying the filters ....
+
+:::{.column-margin}
+I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40
+:::
+
+Add another Venn Diagram showing which droplets are filtered out according to which filter methods
+
+How do the suggested filters from our process compare to the whitelist output from salmon alevin?
+
+### Gene-level filtering
 
 ```{r, eval = FALSE}
 sce <- sce[keep_informative,] #non-informative gene filter
 ```
 
-:::{.column-margin}
-should I wait to apply all of the filters at the same time prior to normalization or apply them after each step? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40
-:::
+### Droplet-level filtering
 
-## Remove doublets
+```{r, eval = FALSE}
+combined_keep <-
+```
 
 
+
+### New Dimensions
+
+```{r, eval = FALSE}
+dim(sce)
+```
+
+```
+[1] FILL IN
+```
 
 ## Transformation
 
