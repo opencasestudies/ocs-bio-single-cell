@@ -263,12 +263,14 @@ Note that my computational environment struggles unless I constantly overwrite s
 qcmetrics <- scuttle::perCellQCMetrics(sce, subsets = list(Mito = which(rowData(sce)$is_mito)))
 ```
 
-Warning message about deprecation
+<details><summary>Warning message about deprecation</summary>
 
 > Warning message:
 In .per_cell_qc_metrics(assay(x, assay.type), subsets = subsets,  :
   'perCellQCMetrics' is deprecated.
 Use 'scrapper::computeRnaQcMetrics' instead.
+
+</details>
 
 ```{r, eval = FALSE}
 lowFeatures <- scuttle::isOutlier(qcmetrics$detected, type="lower", log=TRUE) #low number of genes
@@ -339,9 +341,13 @@ $subset.proportion
 ```
 
 ```{r, eval = FALSE}
-scater::plotColData(sce, y = "subset.proportion.Mito", colour_by="keep")
+scater::plotColData(sce,
+                    y = "subset.proportion.Mito",
+                    colour_by="keep")
 sce$highMito <- sce$subset.proportion.Mito >= metadata(sce)$qc$thresholds$subset.proportion[["Mito"]]
-plotColData(sce, y = "subset.proportion.Mito", colour_by = "highMito")
+plotColData(sce,
+            y = "subset.proportion.Mito",
+            åcolour_by = "highMito")
 ```
 
 ```{r, echo = FALSE, warning = FALSE, out.width=800}
@@ -349,9 +355,13 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 ```
 
 ```{r, eval = FALSE}
-plotColData(sce, y = "detected", colour_by = "keep")
+plotColData(sce,
+            y = "detected",
+            colour_by = "keep")
 sce$lowFeature <- sce$detected <= metadata(sce)$qc$thresholds$detected
-plotColData(sce, y = "detected", colour_by = "lowFeature")
+plotColData(sce,
+            y = "detected",
+            colour_by = "lowFeature")
 ```
 
 ```{r, echo = FALSE, warning = FALSE, out.width=800}
@@ -359,9 +369,13 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 ```
 
 ```{r, eval = FALSE}
-plotColData(sce, y = "sum", colour_by = "keep")
+plotColData(sce,
+            y = "sum",
+            colour_by = "keep")
 sce$lowLibrary <- sce$sum <= metadata(sce)$qc$thresholds$sum
-plotColData(sce, y = "sum", colour_by = "lowLibrary")
+plotColData(sce,
+            y = "sum",
+            colour_by = "lowLibrary")
 ```
 
 ```{r, echo = FALSE, warning = FALSE, out.width=800}
@@ -369,27 +383,58 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 ```
 
 :::{.emphasis_block}
-<details><summary>Alternate QC visualizations</summary>
+<details><summary>Alternative QC visualizations</summary>
 
 sum vs detected
 
 ```{r, eval = FALSE}
-plotColData(sce, x = "sum", y = "detected", colour_by = "keep")
-plotColData(sce, x = "sum", y = "detected", colour_by = "lowLibrary")
-plotColData(sce, x = "sum", y = "detected", colour_by = "lowFeature")
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "keep")
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "lowLibrary")
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "lowFeature")
 ```
 
 ```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_32#slide=id.g3e545ed5e7a_0_32")
 ```
 
+```{r, eval = FALSE}
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "subset.proportion.Mito",
+            point_alpha = 0.25) +
+  scale_color_viridis_c(direction = -1)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_64#slide=id.g3ec2fe01f05_1_64")
+```
+
 sum vs mito
 
 
 ```{r, eval = FALSE}
-plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "keep")
-plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "lowLibrary")
-plotColData(sce, x = "sum", y = "subset.proportion.Mito", colour_by = "highMito")
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "keep")
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "lowLibrary")
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "highMito")
 ```
 
 ```{r, echo = FALSE}
@@ -399,9 +444,18 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 detected vs mito
 
 ```{r, eval = FALSE}
-plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "keep")
-plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "lowFeature")
-plotColData(sce, x = "detected", y = "subset.proportion.Mito", colour_by = "highMito")
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "keep")
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "lowFeature")
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "highMito")
 ```
 
 ```{r, echo = FALSE}
@@ -426,7 +480,8 @@ metadata(sce)$nb_qc$thresholds <- metadata(sce)$qc$thresholds
 ```
 
 ```{r, eval = FALSE}
-sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)), block = sce$sample_id)
+sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)),
+                          block = sce$sample_id)
 table(!sce$keep)
 ```
 
@@ -521,7 +576,9 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 ```
 
 ```{r, eval = FALSE}
-filterSampleSuggestions <- list(Features = which(sce$lowFeature), Library = which(sce$lowLibrary), Mitochondrial = which(sce$highMito))
+filterSampleSuggestions <- list(Features = which(sce$lowFeature),
+                                Library = which(sce$lowLibrary),
+                                Mitochondrial = which(sce$highMito))
 ggVennDiagram(filterSampleSuggestions)
 ```
 
@@ -554,8 +611,11 @@ In your expert opinion, is there any problem with using `scDblFinder` rather tha
 set.seed(8902) #need to set random seed because of the simulation this tool is doing
 sce <- scDblFinder::scDblFinder(sce, samples="sample_id")
 ```
+:::{.column-margin}
+I don't think there's much I can do about these warnings messages for deprecation since the `scDblFinder` package is using those deprecated functions.
+:::
 
-Warning messages
+<details><summary>Warning messages</summary>
 
 ```
 Warning messages:
@@ -601,6 +661,8 @@ Use 'scrapper::centerSizeFactors' instead.
 See help("Deprecated")
 ```
 
+</details>
+
 ```{r, eval = FALSE}
 table(colData(sce)$scDblFinder.class)
 ```
@@ -627,7 +689,8 @@ I should wait to apply all of the filters at the same time prior to normalizatio
 Add another Venn Diagram showing which droplets are filtered out according to which filter methods
 
 ```{r, eval = FALSE}
-filterSuggestions <- list(MAD_thresholding = which(!sce$keep), doublets = which(sce$scDblFinder.class == "doublet"))
+filterSuggestions <- list(MAD_thresholding = which(!sce$keep),
+                          doublets = which(sce$scDblFinder.class == "doublet"))
 ggVennDiagram(filterSuggestions)
 ```
 
@@ -638,7 +701,8 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 How do the suggested filters from our process compare to the whitelist output from salmon alevin?
 
 ```{r, eval = FALSE}
-keepSuggestions <- list(qcKeep = which(sce$keep & (sce$scDblFinder.class == "singlet")), salmonKeep = which(sce$whitelist))
+keepSuggestions <- list(qcKeep = which(sce$keep & (sce$scDblFinder.class == "singlet")),
+                        salmonKeep = which(sce$whitelist))
 ggVennDiagram(keepSuggestions)
 ```
 
@@ -659,7 +723,29 @@ sce <- sce[,sce$combined_keep]
 sce <- sce[rowData(sce)$keep_informative,] #non-informative gene filter
 ```
 
-#### New Dimensions
+### What does the data look like now?
+
+#### Quality control metrics revisited
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "detected", colour_by = "subset.proportion.Mito", point_alpha = 0.25) + scale_color_viridis_c(direction = -1)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_57#slide=id.g3ec2fe01f05_1_57")
+```
+
+After filtering out the cells that our process identified, if we plot those QC metrics and color by whether or not `salmon alevin` would have kept them, we can see which cells it would have removed.
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "detected", colour_by = "whitelist", point_alpha = 0.25)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_72#slide=id.g3ec2fe01f05_1_72")
+```
+
+#### New dimensions
 
 ```{r, eval = FALSE}
 dim(sce)
@@ -669,11 +755,94 @@ dim(sce)
 [1] 30943 56537
 ```
 
-Now we have many more nuclei than genes. More than twice the number of nuclei compared to genes. And we can be more confident in describing the rows as genes rather than features and the columns as nuclei rather than droplets.
+Now we have many more nuclei than genes (as we had expected). More than twice the number of nuclei compared to genes. And we can be more confident in describing the rows as genes rather than features and the columns as nuclei rather than droplets.
+
+We can also free up some memory space again
+
+```{r, eval = FALSE}
+rm(filterSuggestions)
+rm(keepSuggestions)
+rm(sce_list)
+```
 
 ### Transformation
 
+We'll want to perform the normalization transformation for each sample separately so we'll
+
+* first separate our `sce` object by sample_id into a list again
+* for each sample specific `SingleCellExperiment` object in the list, we'll perform normalization.
+* We'll then recombine the data into a single `SingleCellExperiment` object
+
 #### Option A: logNormCounts
+
+```{r, eval = FALSE}
+sce_list <- split(sce, sce$sample_id)
+names(sce_list) <- make.names(names(sce_list)) #if we don't do this, the names begin with a number and we won't be able to as easily access the different samples
+
+sce_list <- lapply(sce_list, function(sub_sce) {
+
+  assay(sub_sce, "logcounts") <- scran::logNormCounts(sub_sce)
+
+  return(sub_sce)
+})
+
+```
+
+:::{.column-margin}
+Given the deprecation warnings, should we use `scrapper` functions instead of `scran` functions for this?
+:::
+
+<details><summary>Some warnings showed up about deprecated functions that `logNormCounts` is using</summary>
+
+```
+Warning messages:
+1: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+2: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+3: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+4: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+5: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+6: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+7: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+8: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+9: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+10: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+11: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+12: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+```
+
+</details>
+
+Visualize
 
 #### Option B: account for nuclei size
 
@@ -682,6 +851,12 @@ Deconvolution
 :::{.column-margin}
 Since quick clustering is being used within this approach to group cells of similar expression profiles, is it ever recommended to perform cell type assignment prior to deconvolution normalization?
 :::
+
+
+Visualize
+
+#### Recombine `sce_list` into single object
+
 
 
 ## Summary of the order of steps that I expect for this section in the end ....
@@ -715,5 +890,15 @@ Option B:
 Option C:
 
 Expert recommendations?
+
+
+Notice that of the steps listed above, certain steps are done in a sample specific manner (whether that be by using a function parameter or splitting the data into an `sce_list`)
+
+* Ambient RNA detection (`sce_list`)
+* MAD thresholding for low quality or damaged droplets (function parameter)
+* Doublet Identification (function parameter)
+* Normalization (`sce_list`)
+
+Flagging non-informative genes is done globally, considering all of the data together
 
 ***

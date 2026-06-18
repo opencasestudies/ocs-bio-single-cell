@@ -29,6 +29,16 @@ Bubble plot heatmap visualization
 
 ### Intermediate
 
+Batch correction
+
+#### Cluster to look for batch effects
+
+#### Option A: Batch correct using knowledge of cell type (provided)
+
+#### Option B: Batch correct without knowledge of cell type
+
+### Advanced
+
 #### Add cell type annotations
 
 ##### Option A: Azimuth
@@ -47,11 +57,8 @@ Bubble plot heatmap visualization
 
 ##### Heatmap C: Bubble plot to show number of cells with expression
 
-#### Differential Gene Expression
+Describe that Differential Gene Expression Analysis will be a common next step
 
-### Advanced
-
-Repeat case study with Python (or R if the Python case study) and compare results
 
 <!--
 Example from a previous case study: https://www.opencasestudies.org/ocs-bp-co2-emissions/#Suggested_Homework (though this example doesn't include different levels like Beginner, Intermediate, and Advanced)
