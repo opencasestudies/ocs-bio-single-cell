@@ -755,6 +755,21 @@ dim(sce)
 [1] 30943 56537
 ```
 
+#### Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$counts) %>%
+     as.data.frame() %>%
+     ggplot(aes(x=`.`)) +
+     geom_histogram(bins = 500) +
+     theme_bw() +
+     xlab("library size after QC")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_1#slide=id.g3edd2726cba_0_1")
+```
+
 Now we have many more nuclei than genes (as we had expected). More than twice the number of nuclei compared to genes. And we can be more confident in describing the rows as genes rather than features and the columns as nuclei rather than droplets.
 
 We can also free up some memory space again
@@ -787,10 +802,6 @@ sce_list <- lapply(sce_list, function(sub_sce) {
 })
 
 ```
-
-:::{.column-margin}
-Given the deprecation warnings, should we use `scrapper` functions instead of `scran` functions for this?
-:::
 
 <details><summary>Some warnings showed up about deprecated functions that `logNormCounts` is using</summary>
 
@@ -842,7 +853,29 @@ See help("Deprecated")
 
 </details>
 
-Visualize
+
+Given the deprecation warnings, I think we should use `scrapper` functions instead of `scran` functions for this
+
+```{r, eval = FALSE}
+sce <- scrapper::normalizeRnaCounts.se(sce,
+                                       size.factors = sce$sum,
+                                       block = sce$sample_id)
+```
+
+#### Normalized Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$logcounts) %>%
+     as.data.frame() %>%
+     ggplot(aes(x=`.`)) +
+     geom_histogram(bins = 500) +
+     theme_bw() +
+     xlab("library size after normalization")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_5#slide=id.g3edd2726cba_0_5")
+```
 
 #### Option B: account for nuclei size
 
@@ -852,12 +885,155 @@ Deconvolution
 Since quick clustering is being used within this approach to group cells of similar expression profiles, is it ever recommended to perform cell type assignment prior to deconvolution normalization?
 :::
 
+```{r, eval = FALSE}
+clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
+deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
+sce <- normalizeCrisprCounts.se(sce,
+                                size.factors=deconv_sf,
+                                block = sce$sample_id,
+                                output.name = "deconvcounts",
+                                factor.name = "deconvSizeFactor")
+```
 
-Visualize
+:::{.column-margin}
+I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and completely `scran` didn't have the `block` option and would have required me to split into a list and recombine. Does this look correct in the way I've combined the `scran` and `scrapper` functions?
+:::
 
-#### Recombine `sce_list` into single object
+#### Normalized Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$deconvcounts) %>%
+    as.data.frame() %>%
+    ggplot(aes(x=`.`)) +
+    geom_histogram(bins = 500) +
+    theme_bw() +
+    xlab("library size after deconvolution normalization")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_10#slide=id.g3edd2726cba_0_10")
+```
 
 
+#### Comparing the options
+
+```{r, eval = FALSE}
+quantile(deconv_sf)
+```
+
+```
+        0%        25%        50%        75%       100%
+ 0.2564244  0.6933694  0.8708276  1.1582113 17.5060382
+```
+
+```{r, eval = FALSE}
+quantile(sce$sizeFactor)
+```
+
+```
+        0%        25%        50%        75%       100%
+ 0.3485906  0.9291513  1.1808229  1.5627790 22.0076022
+```
+
+Add instructions for saving data here.
+
+## A summary of the data wrangling steps
+
+... Adding a summary of the data wrangling steps directly related to data handling in this section that I propose we use (since above this section I showed methods that either didn't take batch into account or used deprecated functions)
+
+```{r, eval = FALSE}
+# Data Prep
+
+exon_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(!grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+exon_data <- snrna_data[exon_ids]
+
+intron_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+intron_data <- snrna_data[intron_ids]
+
+pattern_to_remove <- "\\..*"
+replace_string <- ""
+
+exon_ids <- sub(pattern_to_remove, replace_string, exon_ids)
+intron_ids <- sub(pattern_to_remove, replace_string, intron_ids)
+
+rownames(exon_data) <- exon_ids
+rownames(intron_data) <- intron_ids
+rownames(snrna_data) <- sub(pattern_to_remove, replace_string, rownames(snrna_data))
+
+same_ensembl <- intersect(exon_ids, intron_ids)
+
+snrna_data_ids_subset <- rownames(snrna_data) %>%
+  as.data.frame() %>%
+  dplyr::filter(!. %in% same_ensembl) %>%
+  pull(.)
+
+sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
+    counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
+colData(sce) <- colData(snrna_data)
+
+sce <- sce %>%
+  mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
+                               str_detect(sample_id, "E") ~ "SleepDeprived"
+                               )
+        ) %>%
+  mutate(replicate = factor(str_remove(sample_id, "C|E")))
+
+map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME", keytype = "GENEID")
+rowData(sce)$CHR <- map
+rowData(sce)$is_mito <- if_else(rowData(sce)$CHR == "MT", TRUE, FALSE)
+
+# QC to identify filters
+
+## Ambient RNA detection <- will need to fill in
+
+sce_list <- split(sce, sce$sample_id)
+names(sce_list) <- make.names(names(sce_list)) #if we don't do this, the names begin with a number and we won't be able to as easily access the different samples
+names(sce_list)
+
+## non-informative genes
+
+rowData(sce)$keep_informative <- rowSums(assays(sce)$counts > 0) > 10
+
+## library size, detected genes, mito percent
+
+sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)),
+                          block = sce$sample_id)
+
+# Applying Filters
+
+sce$combined_keep <- sce$keep & (sce$scDblFinder.class == "singlet") #add in ambient RNA detection filter here too after diem run
+sce <- sce[,sce$combined_keep]
+
+sce <- sce[rowData(sce)$keep_informative,] #non-informative gene filter
+
+# Normalization
+
+## Option A: logcounts
+
+sce <- scrapper::normalizeRnaCounts.se(sce,
+                                       size.factors = sce$sum,
+                                       block = sce$sample_id)
+
+## Option B: deconvolution
+
+clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
+deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
+sce <- normalizeCrisprCounts.se(sce,
+                                size.factors=deconv_sf,
+                                block = sce$sample_id,
+                                output.name = "deconvcounts",
+                                factor.name = "deconvSizeFactor")
+
+# Save the data
+```
 
 ## Summary of the order of steps that I expect for this section in the end ....
 
@@ -897,7 +1073,8 @@ Notice that of the steps listed above, certain steps are done in a sample specif
 * Ambient RNA detection (`sce_list`)
 * MAD thresholding for low quality or damaged droplets (function parameter)
 * Doublet Identification (function parameter)
-* Normalization (`sce_list`)
+* logcount normalization (function parameter)
+* Deconvolution Normalization (function parameter, though `sce_list` if only `scran` functions)
 
 Flagging non-informative genes is done globally, considering all of the data together
 
