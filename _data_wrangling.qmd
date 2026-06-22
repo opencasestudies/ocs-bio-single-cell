@@ -73,9 +73,20 @@ snrna_data_ids_subset <- rownames(snrna_data) %>%
 # Ensembl ID was added.
 sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
     counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
-colData(sce) <- colData(snrna_data)
 
-# Add some metadata columns like condition and replicate number
+# Add back column and row data
+colData(sce) <- colData(snrna_data)
+rowData(sce) <- rbind(rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% snrna_data_ids_subset),
+                      rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% same_ensembl)
+                      )
+
+
+
+# Add some more colData columns like condition and replicate number
 sce <- sce %>%
   mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
                                str_detect(sample_id, "E") ~ "SleepDeprived"
@@ -84,7 +95,7 @@ sce <- sce %>%
   mutate(replicate = factor(str_remove(sample_id, "C|E")))
 ```
 
-### Annotate the chromosome including mitochondrial genes
+### Annotate the chromosome including mitochondrial genes within rowData
 
 ```{r, eval = FALSE}
 map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
@@ -130,7 +141,7 @@ names(sce_list)
 [1] "X1C" "X2E" "X3C" "X4E" "X5C" "X8E"
 ```
 
-Add instructions on saving data in case people take a break here.
+Add instructions on saving data in case people take a break here (my file is called `data/wrangled/sce_annot.rds`)
 
 ## Part 2: Quality Control
 
@@ -521,6 +532,8 @@ gridExtra::grid.arrange(
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_26#slide=id.g3e7277bd573_0_26")
 ```
 
+Note that this plot is related to [Figure S1 from the paper](https://www.cell.com/cms/10.1016/j.isci.2024.110752/attachment/e203a712-8903-4c27-a793-bead27a29690/mmc1.pdf) used an inverted color scheme.
+
 And considering the sample violin plots for each of these metrics, we can see that different samples (like 5C and 2E) need more conservative thresholds than other samples. By using less conservative thresholds with the other samples, we end up retaining more data. Because the samples were likely processed separately, this makes sense that they might have different environments driving differences in filtering needs.
 
 ```{r, eval = FALSE}
@@ -674,19 +687,36 @@ singlet doublet
 
 Notice that we've saved all of the necessary quality filtering flags in either the `rowData` (for non-informative gene filtering) or `colData` for droplet filtering.
 
-Add instructions for saving data in case people take a break
+If we consider the library size, number of genes detected, and mitochondrial proportion metrics we were looking at earlier, the droplets identified as doublets would be difficult to disentangle using only those metrics.
 
-## Part 3: Applying QC Filters and Normalization
+```{r, eval = FALSE}
+plotColData(sce, x = "sum",
+                 y = "detected",
+                 colour_by = "subset.proportion.Mito",
+                 point_alpha = 0.25,
+                 other_fields = "scDblFinder.class") +
+  scale_color_viridis_c(direction = -1) +
+  facet_wrap(~`scDblFinder.class`)
+```
 
-Add instructions for loading data in case people take a break and come back here
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_15#slide=id.g3edd2726cba_0_15")
+```
 
-### Applying the filters ....
+In fact, there are several cells that the MAD thresholds would suggest keeping that appear to be doublets which should be removed.
 
-:::{.column-margin}
-I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40 but then I'm also getting a warning from the package when I run the function saying there are cells with extremely low counts. And I see other people on forums recommending that I should remove ambient RNA flagged droplets prior to doublet detection
-:::
+```{r, eval = FALSE}
+plotColData(sce, x = "sum",
+                 y = "detected",
+                 colour_by = "keep",
+                 point_alpha = 0.25,
+                 other_fields = "scDblFinder.class") +
+  facet_wrap(~`scDblFinder.class`)
+```
 
-Add another Venn Diagram showing which droplets are filtered out according to which filter methods
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_19#slide=id.g3edd2726cba_0_19")
+```
 
 ```{r, eval = FALSE}
 filterSuggestions <- list(MAD_thresholding = which(!sce$keep),
@@ -697,6 +727,18 @@ ggVennDiagram(filterSuggestions)
 ```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_47#slide=id.g3ec2fe01f05_1_47")
 ```
+
+Add instructions for saving data in case people take a break (my file is `data/wrangled/sce_filter_annot.rds`)
+
+## Part 3: Applying QC Filters and Normalization
+
+Add instructions for loading data in case people take a break and come back here
+
+### Applying the filters ....
+
+:::{.column-margin}
+I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40 but then I'm also getting a warning from the package when I run the function saying there are cells with extremely low counts. And I see other people on forums recommending that I should remove ambient RNA flagged droplets prior to doublet detection
+:::
 
 How do the suggested filters from our process compare to the whitelist output from salmon alevin?
 
@@ -911,7 +953,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 ```
 
 :::{.column-margin}
-I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and completely `scran` didn't have the `block` option and would have required me to split into a list and recombine. Does this look correct in the way I've combined the `scran` and `scrapper` functions?
+I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and using completely `scran` didn't have the `block` option and would have required me to split the objects into a list and then recombine them. Does this look correct in the way I've combined the `scran` and `scrapper` functions to perform deconvolution normalization?
 :::
 
 #### Comparing the options
@@ -978,16 +1020,28 @@ snrna_data_ids_subset <- rownames(snrna_data) %>%
 
 sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
     counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
+
 colData(sce) <- colData(snrna_data)
+rowData(sce) <- rbind(rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% snrna_data_ids_subset),
+                      rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% same_ensembl)
+                      )
+
+
+
 
 sce <- sce %>%
-  mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
-                               str_detect(sample_id, "E") ~ "SleepDeprived"
-                               )
-        ) %>%
-  mutate(replicate = factor(str_remove(sample_id, "C|E")))
+    mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
+                                 str_detect(sample_id, "E") ~ "SleepDeprived"
+                                )
+          ) %>%
+    mutate(replicate = factor(str_remove(sample_id, "C|E")))
 
-map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME", keytype = "GENEID")
+map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
+                             keytype = "GENEID")
 rowData(sce)$CHR <- map
 rowData(sce)$is_mito <- if_else(rowData(sce)$CHR == "MT", TRUE, FALSE)
 
@@ -1007,6 +1061,11 @@ rowData(sce)$keep_informative <- rowSums(assays(sce)$counts > 0) > 10
 
 sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)),
                           block = sce$sample_id)
+
+## doublets
+
+set.seed(8902) #need to set random seed because of the simulation this tool is doing
+sce <- scDblFinder::scDblFinder(sce, samples="sample_id")
 
 # Applying Filters
 
@@ -1073,6 +1132,10 @@ Option C:
 
 Expert recommendations?
 
+
+::: {.column-margin}
+Which of these options should I be using to order steps within this section for proper QC and normalization?
+:::
 
 Notice that of the steps listed above, certain steps are done in a sample specific manner (whether that be by using a function parameter or splitting the data into an `sce_list`)
 

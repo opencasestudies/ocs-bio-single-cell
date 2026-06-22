@@ -19,14 +19,15 @@ library(scuttle)
 library(scran)
 library(scater)
 library(scrapper)
-library(Azimuth)
-library(FastCAR)
-library(SoupX)
-library(diem)
+#library(Azimuth)
+#library(FastCAR)
+#library(SoupX)
+#library(diem)
 library(scDblFinder)
 library(singleCellTK)
 library(DropletUtils)
 library(ggVennDiagram)
+library(pipeComp)
 ```
 
 <!--
@@ -61,4 +62,4 @@ How are the single cell Bioconductor packages related to each other? Which ones 
 * scuttle: QC and data wrangling of `SingleCellExperiment` objects
 * scran: Analysis functionality when working with `SingleCellExperiment` objects
 * scater: Plotting functions
-* scrapper: Newer, more efficient implementation of `scuttle` and `scran` functionality
+* scrapper: Newer, more efficient implementation of `scuttle` and `scran` functionality. Seems to be a wrapper for some of the older `scran` functions too?
