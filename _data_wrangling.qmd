@@ -895,10 +895,6 @@ sce <- normalizeCrisprCounts.se(sce,
                                 factor.name = "deconvSizeFactor")
 ```
 
-:::{.column-margin}
-I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and completely `scran` didn't have the `block` option and would have required me to split into a list and recombine. Does this look correct in the way I've combined the `scran` and `scrapper` functions?
-:::
-
 #### Normalized Expression visualized
 
 ```{r, eval = FALSE}
@@ -914,6 +910,9 @@ colSums(assays(sce)$deconvcounts) %>%
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_10#slide=id.g3edd2726cba_0_10")
 ```
 
+:::{.column-margin}
+I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and completely `scran` didn't have the `block` option and would have required me to split into a list and recombine. Does this look correct in the way I've combined the `scran` and `scrapper` functions?
+:::
 
 #### Comparing the options
 
