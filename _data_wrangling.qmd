@@ -930,7 +930,7 @@ Since quick clustering is being used within this approach to group cells of simi
 ```{r, eval = FALSE}
 clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
 deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
-sce <- normalizeCrisprCounts.se(sce,
+sce <- normalizeRnaCounts.se(sce,
                                 size.factors=deconv_sf,
                                 block = sce$sample_id,
                                 output.name = "deconvcounts",
@@ -978,7 +978,7 @@ quantile(sce$sizeFactor)
 
 Looking at the two plots, I think that the deconvolution option is my preferred one because of the tighter bell-shaped curve. The regular log counts approach has a broader range of values, seems skewed, and also multimodal.
 
-Add instructions for saving data here.
+Add instructions for saving data here. My file is `data/wrangled/sce_norm.rds`
 
 ## A summary of the data wrangling steps
 
@@ -1088,7 +1088,7 @@ sce <- scrapper::normalizeRnaCounts.se(sce,
 
 clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
 deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
-sce <- normalizeCrisprCounts.se(sce,
+sce <- normalizeRnaCounts.se(sce,
                                 size.factors=deconv_sf,
                                 block = sce$sample_id,
                                 output.name = "deconvcounts",

@@ -15,15 +15,198 @@ Add instructions for loading data
 
 ## Heatmaps
 
+Grabbing the gene names that were used for the heatmaps in Supplemental Figure 5 of the paper.
+
+```{r, eval = FALSE}
+genes_to_use <- c("Gad1", "Gad2", "Slc17a7", "Sncg", "Vip", "Sst", "Pvalb", "Rorb", "Fezf2", "Foxp2", "Mbp", "Cldn5", "C1qa", "Lhx2", "Sox9", "Etv1", "Gfap", "Tle4", "Nos1", "Htr3a")
+features <- rownames(sce)[which(rowData(sce)$SYMBOL %in% genes_to_use)]
+```
+
+Note that I can't just pass the `genes_to_use` vector to the function because it's expecting rownames values which for us are ensembl IDs. If I just use the `features` to plot the heatmap (the correponding ensembl IDs), then I can't display the gene symbol names. However, I can set the `swap_rownames` argument to the `rowData` column I want `SYMBOL` in which case, I need to pass `genes_to_use` instead of `features` to the function.
+
 ### Columns are nuclei
+
+This heatmap plots a select number of genes within the rows and all of the nuclei that were retained after filtering along the columns. We're specifically plotting the deconvolution normalized expression values.
+
+
+Simplified example orienting learners to what the heatmap will look like
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_42#slide=id.g3edd2726cba_0_42")
+```
+
+Can add thought questions about
+
+  * what the `?`, `*`, `&`, and `^` cells would represent
+  * why might color be used instead of labeling the cells with numbers?
+  * what would `n` be in this dataset?
+  * what would `m` be in this dataset?
+
+```{r, eval = FALSE}
+scater::plotHeatmap(sce,
+            genes_to_use,
+            exprs_values = "deconvcounts",
+            swap_rownames = "SYMBOL")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_28#slide=id.g3edd2726cba_0_28")
+```
+
+We can cluster just the columns (or the nuclei) (rather than the genes as well)
+
+```{r, eval = FALSE}
+plotHeatmap(sce,
+            genes_to_use,
+            exprs_values = "deconvcounts",
+            swap_rownames = "SYMBOL",
+            cluster_rows = FALSE)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_37#slide=id.g3edd2726cba_0_37")
+```
+
+Or use no clustering at all
+
+```{r, eval = FALSE}
+plotHeatmap(sce,
+            genes_to_use,
+            exprs_values = "deconvcounts",
+            swap_rownames = "SYMBOL",
+            cluster_rows = FALSE,
+            cluster_cols = FALSE)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_32#slide=id.g3edd2726cba_0_32")
+```
+
+No matter which approach we use to plot this heatmap where a select number of genes are plotted in the rows and all nuclei retained after filtering are represented in the columns, we can observe how sparse the data is. We're specifically plotting the deconvolution normalization counts for each of these genes for each of the nuclei. When we utilize some clustering, the non-zero values are clustered together showing neighborhoods of brighter color rather than being intermittently sprinkled throughout the data.
 
 ### Columns are based on clustering clusters
 
-(We'll provide the clusters and explain how we got them in a click to expand section)
+For this heatmap, we'll plot expression for genes (represented in rows again), but this time our columns will reflect the expression of that gene for clusters of nuclei. We'll have to aggregate the counts across the nuclei within each cluster first though.
+
+What are our options for aggregating counts?
+
+* Sum gene-specific counts for all nuclei in a cluster
+* Average gene-specific counts for all nuclei in a cluster
+
+(We'll provide the clusters and explain how we got them in a click to expand section ... may use the Azimuth clusters but for now, using the clusters from the quick cluster approach though each sample will have non-overlapping clusters)
+
+#### Aggregate by summing
+
+```{r, eval = FALSE}
+sce_cluster_sums <- scrapper::aggregateAcrossCells.se(sce,
+        sce$quickClusters,
+        assay.type = "deconvcounts")
+```
+
+This function sums by default without the chance to switch it to averaging, and the scuttle version which lets you specify averaging is deprecated.
+
+```{r, eval = FALSE}
+plotHeatmap(sce_cluster_sums,
+            genes_to_use,
+            exprs_values = "sums",
+            swap_rownames = "SYMBOL")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_48#slide=id.g3edd2726cba_0_48")
+```
+
+Just clustering the columns
+
+```{r, eval = FALSE}
+plotHeatmap(sce_cluster_sums,
+            genes_to_use,
+            exprs_values = "sums",
+            swap_rownames = "SYMBOL",
+            cluster_cols = FALSE)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_52#slide=id.g3edd2726cba_0_52")
+```
+
+No clustering at all
+
+```{r, eval = FALSE}
+plotHeatmap(sce_cluster_sums,
+            genes_to_use,
+            exprs_values = "sums",
+            swap_rownames = "SYMBOL",
+            cluster_rows = FALSE,
+            cluster_cols = FALSE)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_55#slide=id.g3edd2726cba_0_55")
+```
 
 ### Columns are nuclei pooled for each sample
 
+#### Aggregate by averaging
 
-Add instructions for saving data
+Because the `aggregateAcrossCells.se` function doesn't natively support averaging, we would have to do it a different way - a few are [discussed in this GitHub issues thread](https://github.com/libscran/scrapper/issues/22)
+
+
+```{r, eval = FALSE}
+
+agg <- aggregateAcrossCells.se(sce,
+                               sce$sample_id,
+                               assay.type = "deconvcounts")
+assay(agg, "averages") <- t(t(assays(agg)$sums)/agg$counts)
+```
+
+Alternatively, we can use the `sweep` function instead of the double transpose step. `sce_sample_avgs <- sweep(assays(agg)$sums, MARGIN = 2, STATS = agg$counts, FUN = "/")`
+
+This heatmap shows the average normalized expression pooling all nuclei in a sample together -- this visualization is the most similar to the data from bulk RNA-sequencing because it's ignoring the "single cell/nuclei" aspects of the data.
+
+```{r, eval = FALSE
+plotHeatmap(agg,
+            genes_to_use,
+            exprs_values = "averages",
+            swap_rownames = "SYMBOL",
+            colour_columns_by = "condition")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_61#slide=id.g3edd2726cba_0_61")
+```
+
+This heatmap only clusters the columns
+
+```{r, eval = FALSE}
+plotHeatmap(agg,
+            genes_to_use,
+            exprs_values = "averages",
+            swap_rownames = "SYMBOL",
+            cluster_rows = FALSE,
+            colour_columns_by = "condition")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_65#slide=id.g3edd2726cba_0_65")
+```
+
+This heatmap doesn't cluster either the rows or the columns
+
+```{r, eval = FALSE}
+plotHeatmap(agg,
+            genes_to_use,
+            exprs_values = "averages",
+            swap_rownames = "SYMBOL",
+            cluster_rows = FALSE,
+            cluster_cols = FALSE,
+            colour_columns_by = "condition")
+```
+
+```{r, eval = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_68#slide=id.g3edd2726cba_0_68")
+```
+
+Add instructions for saving data. My file is the `aggregated_list.RDS` with both `agg` and `sce_cluster_sums` saved in the list.
 
 ***
