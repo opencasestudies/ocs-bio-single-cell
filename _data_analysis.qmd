@@ -31,15 +31,9 @@ We might use a column margin note to add an equation or some other annotation fo
 :::
 -->
 
-## Handle Replicates (assuming the clusters we've provided are the cell types)
-
-### Option A: pseudobulk
-
-### Option B: average
-
 ## Put the process together with `pipeComp`
 
-### For each combination of the workflow ...
+### For each normalization option and aggregation combination, working within the quick clusters....
 
 #### What is the highest expressed gene for each cluster? (What's its expression?)
 
