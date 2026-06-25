@@ -33,12 +33,129 @@ We might use a column margin note to add an equation or some other annotation fo
 
 ## Put the process together with `pipeComp`
 
+We'll want to build at least one function with parameters that control its behavior so that we can use `pipeComp`.
+
+Will build the function in the narrative
+
+```{r, eval = FALSE}
+
+#' A function to drive the normalization and aggregation process
+#'
+#' @parameter load_data either TRUE or FALSE. Will load data if TRUE, will run the normalization process if FALSE
+#' @parameter norm_method either logcounts or deconvolution
+#' @parameter aggregation_method either sum or average
+#' @parameter aggregation_across either cluster or sample
+#' @parameter sce default is NULL, provide if load_data is FALSE. Should be a SingleCellExperiment object that is filtered but not yet normalized. Should have colData columns `sum` and `sample_id`
+#'
+#' @return aggregated a normalized and aggregated summary of the data
+
+
+norm_aggregate <- function(norm_method, load_data, aggregation_method, aggregation_across, sce = NULL){
+
+  # check parameter inputs
+  stopifnot(load_data %in% c(TRUE, FALSE))
+  stopifnot(norm_method %in% c('logcounts', 'deconvolution'))
+  stopifnot(aggregation_method %in% c('sum', 'average'))
+  stopifnot(aggregation_across %in% c('cluster', 'sample'))
+
+  # normalization
+
+  if (load_data){
+    sce <- readRDS("data/wrangled/sce_norm.rds")
+  } else {
+    if (is.null(sce)){
+      stop("Must provide an sce object with filtered, unnormalized data and colData columns `sum` and `sample_id`")
+    }
+    if (norm_method == "logcounts"){
+      sce <- scrapper::normalizeRnaCounts.se(sce,
+                                           size.factors = sce$sum,
+                                           block = sce$sample_id)
+    }
+    if (norm_method == "deconvolution"){
+      sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+      deconv_sf <- scran::calculateSumFactors(sce, clusters = clusters.block)
+      sce <- normalizeRnaCounts.se(sce,
+                                 size.factors = deconv_sf,
+                                 block = sce$sample_id,
+                                 output.name = "deconvcounts",
+                                 factor.name = "deconvSizeFactor")
+    }
+  }
+
+  # aggregation
+
+  if(norm_method == "logcounts"){
+    assay_type <- "logcounts"
+  } else{
+    assay_type <- "deconvcounts"
+  }
+
+  if(aggregation_across == "cluster"){
+    coi <- "quickClusters"
+    if (!coi %in% names(colData(sce))){
+      sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+    }
+  } else{
+    coi <- "sample_id"
+  }
+
+
+  if (aggregation_method == "sum"){
+    aggregated <- scrapper::aggregateAcrossCells.se(sce,
+                      colData(sce)[[coi]],
+                      assay.type = assay_type)
+  }
+
+  if (aggregation_method == "average"){
+    aggregated <- scrapper::aggregateAcrossCells.se(sce,
+                      colData(sce)[[coi]],
+                      assay.type = assay_type)
+    assay(aggregated, "averages") <- t(t(assays(aggregated)$sums)/aggregated$counts)
+  }
+
+  return (aggregated)
+}
+
+#make a function to find the stats below
+
+```
+
+
 ### For each normalization option and aggregation combination, working within the quick clusters....
+
+TODO: show how to use pipeComp for these questions....
 
 #### What is the highest expressed gene for each cluster? (What's its expression?)
 
-#### What is the lowest expressed gene for each cluster? (What's its expression?)
+```{r, eval = FALSE}
+
+result <- apply(assays(agg_cluster_sum)$sums, 2, function(col) {
+    c(gene = rownames(agg_cluster_sum)[which.max(col)], max_value = max(col))
+})
+
+result %>% t() %>% as.data.frame() %>% mutate(cluster = as.factor(row_number())) %>% left_join(., colData(sce)[c("condition", "quickClusters")] %>% as.data.frame(), by = c("cluster" = "quickClusters") ) %>% unique()
+```
+
+#### How many genes have no observed expression within that cluster?
+
+```{r, eval = FALSE}
+colSums(assays(agg_cluster_sum)$sums == 0)
+```
 
 #### What's the median gene expression value for each cluster? (What gene(s) is it connected to?)
+
+```{r, eval = FALSE}
+result <- apply(assays(agg_cluster_sum)$sums, 2, function(col) {
+  # Calculate the standard median
+  med_val <- round(median(col),2)
+
+  # Find the row index of the value closest to the median
+  gene <- rownames(agg_cluster_sum)[which.min(abs(col - med_val))]
+
+  c(gene = gene, median_value = med_val)
+})
+
+result %>% t() %>% as.data.frame() %>% mutate(cluster = as.factor(row_number())) %>% left_join(., colData(sce)[c("condition", "quickClusters")] %>% as.data.frame(), by = c("cluster" = "quickClusters") ) %>% unique()
+```
 
 ***

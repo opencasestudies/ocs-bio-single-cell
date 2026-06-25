@@ -1086,8 +1086,8 @@ sce <- scrapper::normalizeRnaCounts.se(sce,
 
 ## Option B: deconvolution
 
-clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
-deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
+sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+deconv_sf <- scran::calculateSumFactors(sce, clusters = sce$quickClusters)
 sce <- normalizeRnaCounts.se(sce,
                                 size.factors=deconv_sf,
                                 block = sce$sample_id,
