@@ -46,9 +46,6 @@ Package    | Use
 [ggplot2]({Documentation URL}){target="_blank"}      | {Package use}
 [FastCAR]({Documentation URL}){target="_blank"} or [SoupX]()     | {Package use}
 
-{tbl-colwidths="[33.5,66.5]"}
-
-
 
 The first time we use a function, we will use the `::` to indicate which package we are using. Unless we have overlapping function names, this is not necessary, but we will include it here to be informative about where the functions we will use come from.
 

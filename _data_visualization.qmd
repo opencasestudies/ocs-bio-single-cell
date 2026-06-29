@@ -22,7 +22,7 @@ genes_to_use <- c("Gad1", "Gad2", "Slc17a7", "Sncg", "Vip", "Sst", "Pvalb", "Ror
 features <- rownames(sce)[which(rowData(sce)$SYMBOL %in% genes_to_use)]
 ```
 
-Note that I can't just pass the `genes_to_use` vector to the function because it's expecting rownames values which for us are ensembl IDs. If I just use the `features` to plot the heatmap (the correponding ensembl IDs), then I can't display the gene symbol names. However, I can set the `swap_rownames` argument to the `rowData` column I want `SYMBOL` in which case, I need to pass `genes_to_use` instead of `features` to the function.
+Note that I can't just pass the `genes_to_use` vector to the function because it's expecting rownames values which for us are ensembl IDs. If I just use the `features` to plot the heatmap (the corresponding ensembl IDs), then I can't display the gene symbol names. However, I can set the `swap_rownames` argument to the `rowData` column I want `SYMBOL` in which case, I need to pass `genes_to_use` instead of `features` to the function.
 
 ### Columns are nuclei
 

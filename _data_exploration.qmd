@@ -224,7 +224,7 @@ That leaves us with 54,464 unique genes represented in this data prior to filter
 [1] 54464
 ```
 
-(add a dropdown section about why we might filter genes specifially and not just droplets and point to section in data wrangling that does that)
+(add a dropdown section about why we might filter genes specifically and not just droplets and point to section in data wrangling that does that)
 
 > Grab a random mitochondrial gene to show that there are some in the data
 
