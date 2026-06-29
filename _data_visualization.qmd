@@ -164,7 +164,7 @@ Alternatively, we can use the `sweep` function instead of the double transpose s
 
 This heatmap shows the average normalized expression pooling all nuclei in a sample together -- this visualization is the most similar to the data from bulk RNA-sequencing because it's ignoring the "single cell/nuclei" aspects of the data.
 
-```{r, eval = FALSE
+```{r, eval = FALSE}
 plotHeatmap(agg,
             genes_to_use,
             exprs_values = "averages",
@@ -203,7 +203,7 @@ plotHeatmap(agg,
             colour_columns_by = "condition")
 ```
 
-```{r, eval = FALSE}
+```{r, echo = FALSE}
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_68#slide=id.g3edd2726cba_0_68")
 ```
 

@@ -41,21 +41,21 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 
 We'll focus on combining the normalization and aggregation processes and ask a few questions about the normalized/aggregated data.
 
-1. What is the highest expressed gene (within the clusters/samples)? What is its observed normalized expression?
+> What is the highest expressed gene (within the clusters/samples)? What is its observed normalized expression?
 
-For this we'll want to look at within cluster/sample normalized expression and find the highest value and report that back. We can figure out which gene is the highest across the most number of clusters/samples. We'll specifically report back the gene name, how many clusters/samples it's the highest for, and the observed normalized expression value.
+For this we'll want to look at within cluster/sample normalized expression and find the highest value and report that back. We can figure out which gene is the highest across the most number of clusters/samples. We'll specifically report back the gene name, how many clusters/samples it's the highest for, and the observed normalized expression value. We'll call this `"max"`.
 
-2. How many genes have no observed normalized expression within a cluster/sample?
+> How many genes have no observed normalized expression within a cluster/sample?
 
-For this we'll want to look within cluster/sample normalized expression values and find how many 0s there are. We can find the quartiles across the clusters/samples and report those numbers back (`0%`, `25%`, `50%`, `75%`, and `100%`)
+For this we'll want to look within cluster/sample normalized expression values and find how many 0s there are. We can find the quartiles across the clusters/samples and report those numbers back (`0%`, `25%`, `50%`, `75%`, and `100%`). We'll call this `"min"`.
 
-3. What is the lowest observed median normalized expression (within the clusters/samples)? Which gene is closest to this value?
+> What is the highest observed variance of normalized expression (across the clusters/samples)? Which gene exhibits this amount of variance?
 
-For this we'll find the median observed normalized expression value within each cluster/sample. We'll then find which gene in that cluster/sample that has the closest observed normalized expression. Finally, we'll pick the lowest value across all the clusters reporting the gene, the median value, and the grouping_id for the cluster or sample that gene was identified for.
+For this we'll find the variance of each gene's observed normalized expression across clusters/samples and then return the highest variance observed and which gene has that variance. We'll call this `"variance"`.
 
-4. What is the highest observed variance of normalized expression (across the clusters/samples)? Which gene exhibits this amount of variance?
+> What is the lowest observed median normalized expression (within the clusters/samples)? Which gene is closest to this value?
 
-For this we'll find the variance of each gene's observed normalized expression across clusters/samples and then return the highest variance observed and which gene has that variance.
+For this we'll find the median observed normalized expression value within each cluster/sample. We'll then find which gene in that cluster/sample that has the closest observed normalized expression. Finally, we'll pick the lowest value across all the clusters reporting the gene, the median value, and the grouping_id for the cluster or sample that gene was identified for. We'll call this `"median"`.
 
 We can compare the results of each of these across different combinations of normalization and aggregation.
 
