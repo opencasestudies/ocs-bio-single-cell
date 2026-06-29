@@ -101,7 +101,10 @@ sce <- sce %>%
 map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
                keytype = "GENEID")
 rowData(sce)$CHR <- map
-rowData(sce)$is_mito <- if_else(rowData(sce)$CHR == "MT", TRUE, FALSE)
+rowData(sce)$is_mito <- case_when(
+  rowData(sce)$CHR == "MT"  ~ TRUE,
+  .default = FALSE
+)
 ```
 
 > Warning message:
@@ -532,7 +535,7 @@ gridExtra::grid.arrange(
 ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_26#slide=id.g3e7277bd573_0_26")
 ```
 
-Note that this plot is related to [Figure S1 from the paper](https://www.cell.com/cms/10.1016/j.isci.2024.110752/attachment/e203a712-8903-4c27-a793-bead27a29690/mmc1.pdf) used an inverted color scheme.
+Note that this plot is related to [Figure S1 from the paper](https://www.cell.com/cms/10.1016/j.isci.2024.110752/attachment/e203a712-8903-4c27-a793-bead27a29690/mmc1.pdf) but uses an inverted color scheme.
 
 And considering the sample violin plots for each of these metrics, we can see that different samples (like 5C and 2E) need more conservative thresholds than other samples. By using less conservative thresholds with the other samples, we end up retaining more data. Because the samples were likely processed separately, this makes sense that they might have different environments driving differences in filtering needs.
 
@@ -1043,7 +1046,10 @@ sce <- sce %>%
 map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
                              keytype = "GENEID")
 rowData(sce)$CHR <- map
-rowData(sce)$is_mito <- if_else(rowData(sce)$CHR == "MT", TRUE, FALSE)
+rowData(sce)$is_mito <- case_when(
+  rowData(sce)$CHR == "MT"  ~ TRUE,
+  .default = FALSE
+)
 
 # QC to identify filters
 

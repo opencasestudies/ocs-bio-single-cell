@@ -186,10 +186,10 @@ norm_aggregate_data <- function(norm_method, load_data, aggregation_method, aggr
   }
 
   if (aggregation_method == "average"){
-    aggregated <- scrapper::aggregateAcrossCells.se(sce,
-                      colData(sce)[[coi]],
-                      assay.type = assay_type)
-    assay(aggregated, "averages") <- t(t(assays(aggregated)$sums)/aggregated$counts)
+    aggregated <- tidySingleCellExperiment::aggregate_cells(sce,
+                      .sample = coi,
+                      assays = assay_type)
+    names(assays(aggregated)) <- "averages"
     aoi <- "averages"
   }
 

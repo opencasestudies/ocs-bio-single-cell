@@ -153,7 +153,6 @@ Because the `aggregateAcrossCells.se` function doesn't natively support averagin
 
 
 ```{r, eval = FALSE}
-
 agg <- aggregateAcrossCells.se(sce,
                                sce$sample_id,
                                assay.type = "deconvcounts")
@@ -162,10 +161,23 @@ assay(agg, "averages") <- t(t(assays(agg)$sums)/agg$counts)
 
 Alternatively, we can use the `sweep` function instead of the double transpose step. `sce_sample_avgs <- sweep(assays(agg)$sums, MARGIN = 2, STATS = agg$counts, FUN = "/")`
 
+Finally, a better approach is to use a `tidySingleCellExperiment` function for this. (it can also do sums by switching the aggregation_function parameter)
+
+```{r, eval = FALSE}
+sce_sample_avgs <- sce %>%
+    tidySingleCellExperiment::aggregate_cells(
+        .sample = sample_id,                    # The colData column to group by
+        assays = "deconvcounts",                # The assay to aggregate
+        aggregation_function = Matrix::rowMeans # Computes average instead of sum
+    )
+names(assays(sce_sample_avgs)) <- "averages"
+```
+
+
 This heatmap shows the average normalized expression pooling all nuclei in a sample together -- this visualization is the most similar to the data from bulk RNA-sequencing because it's ignoring the "single cell/nuclei" aspects of the data.
 
 ```{r, eval = FALSE}
-plotHeatmap(agg,
+plotHeatmap(sce_sample_avgs,
             genes_to_use,
             exprs_values = "averages",
             swap_rownames = "SYMBOL",
@@ -179,7 +191,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 This heatmap only clusters the columns
 
 ```{r, eval = FALSE}
-plotHeatmap(agg,
+plotHeatmap(sce_sample_avgs,
             genes_to_use,
             exprs_values = "averages",
             swap_rownames = "SYMBOL",
@@ -194,7 +206,7 @@ ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLg
 This heatmap doesn't cluster either the rows or the columns
 
 ```{r, eval = FALSE}
-plotHeatmap(agg,
+plotHeatmap(sce_sample_avgs,
             genes_to_use,
             exprs_values = "averages",
             swap_rownames = "SYMBOL",
