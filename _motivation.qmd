@@ -18,8 +18,10 @@ Provide the definition here
 ::::
 :::
 
-Images are very helpful within this section....
+Add a simplified version of this image
 
-![](img/motivation_map_of_monitors.jpg){fig-alt="Map showing location of air pollution monitors across the US." width=800 .lightbox}
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_0#slide=id.g3e545ed5e7a_0_0")
+```
 
 ***

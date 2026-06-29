@@ -1,58 +1,1156 @@
-<!--
-Update the file paths as needed throughout
--->
-
-<!--
-Some case studies may wish to merge Data Exploration with this Wrangling subsection
--->
-
-<!--
-At the end of this section, save incremental data so that users can pause and come back later
--->
-
 # **Data Wrangling**
 ***
 
 If you have been following along but stopped, we could load our imported data like so:
 
-```{r}
-load(here::here("data", "imported", "pm25_data_imported.rda"))
-```
+Add instructions for importing data
+
 ***
 
 <details> <summary> If you skipped the data import section click here. </summary>
 
-An RDA version (stands for R data) of the data can be found [here](https://github.com//opencasestudies/ocs-bp-co2-emissions/tree/master/data/imported) or slightly more directly [here](https://raw.githubusercontent.com/opencasestudies/ocs-bp-co2-emissions/master/data/imported/co2_data_imported.rda). Download this file and then place it in your current working directory within a subdirectory called "imported" within a directory called "data" to use the following code. We used an RStudio project and the [`here` package](https://github.com/jennybc/here_here) to navigate to the file more easily.
-
-```{r, eval=FALSE}
-load(here::here("data", "imported", "co2_data_imported.rda"))
-```
+Add instructions for importing data
 
 </details>
 ***
 
-<!--
-Use this section to explain step-by-step the data wrangling process used to prepare the data for analysis.
-This includes an example of code annotation with Quarto. See the documentation for more information: https://quarto.org/docs/authoring/code-annotation.html
--->
+Using that zenodo data means there's an overall SingleCellExperiment object for all mice -- we just have to
 
-To allow users to skip import and wrangling we will save the data as an RDA file as well as a CSV file as this is often useful to send our data to collaborators. We will save this in a “wrangled” subdirectory of our “data” directory of our working directory.
+* handle introns and exons both being represented in the data
+* mark mitochondrial genes
 
-```{r}
-save(pm, file = here::here("data", "wrangled", "wrangled_data.rda")) # <1>
-readr::write_csv(pm, file = here::here("data","wrangled",            # <2>
-                                       "wrangled_data.csv"))         # <2>
+Steps in this section
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ea117cd814_0_22#slide=id.g3ea117cd814_0_22")
+```
+## Part 1: Data Preparation
+
+### Handling Introns and Exons
+
+```{r, eval = FALSE}
+# Extract Exon Ensembl IDs and associated count data
+exon_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(!grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+exon_data <- snrna_data[exon_ids]
+
+# Extract Intron Ensembl IDs and associated count data
+intron_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+intron_data <- snrna_data[intron_ids]
+
+# Simplify Ensembl IDs and find matching IDs between introns and exons
+
+pattern_to_remove <- "\\..*"
+replace_string <- ""
+
+## the IDs
+exon_ids <- sub(pattern_to_remove, replace_string, exon_ids)
+intron_ids <- sub(pattern_to_remove, replace_string, intron_ids)
+
+## the data sources
+rownames(exon_data) <- exon_ids
+rownames(intron_data) <- intron_ids
+rownames(snrna_data) <- sub(pattern_to_remove, replace_string, rownames(snrna_data))
+
+# Subset to only exons and introns with the same Ensembl ID
+same_ensembl <- intersect(exon_ids, intron_ids)
+
+# Remove introns and exons with shared IDs from the overall snRNA data
+snrna_data_ids_subset <- rownames(snrna_data) %>%
+  as.data.frame() %>%
+  dplyr::filter(!. %in% same_ensembl) %>%
+  pull(.)
+
+# A new SingleCellExperiment object was created, where the sum
+# of the UMI counts of spliced mRNA and introns sharing the same
+# Ensembl ID was added.
+sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
+    counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
+
+# Add back column and row data
+colData(sce) <- colData(snrna_data)
+rowData(sce) <- rbind(rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% snrna_data_ids_subset),
+                      rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% same_ensembl)
+                      )
+
+
+
+# Add some more colData columns like condition and replicate number
+sce <- sce %>%
+  mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
+                               str_detect(sample_id, "E") ~ "SleepDeprived"
+                               )
+        ) %>%
+  mutate(replicate = factor(str_remove(sample_id, "C|E")))
 ```
 
-1. saving the data as an RDA file within the wrangled data subdirectory
-2. saving the data as a CSV file within the wrangled data subdirectory
+### Annotate the chromosome including mitochondrial genes within rowData
 
-<!--
-Note that with this code annotation example, we've used a new line to space the code so that the annotation doesn't overlay the code
--->
+```{r, eval = FALSE}
+map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
+               keytype = "GENEID")
+rowData(sce)$CHR <- map
+rowData(sce)$is_mito <- case_when(
+  rowData(sce)$CHR == "MT"  ~ TRUE,
+  .default = FALSE
+)
+```
 
-<!--
-Replace `pm` above with the name of the data object created at the end of data wrangling.
--->
+> Warning message:
+Unable to map 13156 of 54464 requested IDs.
+
+Note that the number of rows matched the length of `map` though.
+
+Let's reclaim some environment space since we won't need `snrna_data` again ... removing the large data sets.
+
+```{r, eval = FALSE}
+rm(snrna_data)
+rm(exon_data)
+rm(intron_data)
+```
+
+We can also remove some of the less large, but still sizable objects which are unnecessary moving forward
+
+```{r, eval = FALSE}
+rm(exon_ids)
+rm(intron_ids)
+rm(map)
+rm(same_ensembl)
+rm(snrna_data_ids_subset)
+```
+
+### Create SingleCellExperiment objects for each mouse
+
+Ambient RNA detection is run on each sample separately, so we want to separate out the samples
+
+```{r, eval = FALSE}
+sce_list <- split(sce, sce$sample_id)
+names(sce_list) <- make.names(names(sce_list)) #if we don't do this, the names begin with a number and we won't be able to as easily access the different samples
+names(sce_list)
+```
+
+```
+[1] "X1C" "X2E" "X3C" "X4E" "X5C" "X8E"
+```
+
+Add instructions on saving data in case people take a break here (my file is called `data/wrangled/sce_annot.rds`)
+
+## Part 2: Quality Control
+
+Add instructions on importing data in case people took a break and pick back up here.
+
+### Ambient RNA detection
+
+Note that Ambient RNA detection should occur before any other filtering (I think even before filtering of non-informative (count 0) genes) because the algorithms rely on being able to model the background distribution of reads.
+
+The classical plot to evaluate whether there may be Ambient RNA in your sample is the Barcode Rank plot that visualizes the total UMI or read counts for each barcode against the barcode's rank (highest to lowest).
+
+Note that though I'm using all of the samples together to make the plot, [according to the OSCA book](https://bioconductor.org/books/3.13/OSCA.advanced/droplet-processing.html#qc-droplets), we want to run ambient RNA detection tools on each sample separately because each sample will have a unique ambient RNA landscape and the tools (at least many of them) are comparing the total counts for each barcode against the total counts for the suspected ambient RNA population to decide what is an "empty" droplet vs a droplet with the data you want.
+
+This approach utilizes base R to find the total counts and ranks (because `DropletUtils` wasn't installing properly for me at first).
+
+```{r, eval = FALSE}
+# 1. Calculate total counts (UMIs) per barcode (column)
+total_counts <- Matrix::colSums(assays(sce)$counts)
+# 2. Filter out barcodes with 0 counts (for speed)
+total_counts <- total_counts[total_counts > 0]
+# 3. Create a sorted data frame of unique counts and their ranks
+bcranks <- data.frame(
+Total = sort(total_counts, decreasing = TRUE),
+Rank = seq_along(total_counts)
+)
+# 4. Remove duplicates
+bcrank_unique <- bcranks[!duplicated(bcranks$Total), ]
+# 5.
+bcrank_unique %>%
+  ggplot(aes(x=Rank, y = Total)) +
+  geom_point() +
+  xlab("Barcode Rank") +
+  ylab("Total UMI Count") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_bw()
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_7#slide=id.g3e545ed5e7a_0_7")
+```
+
+This approach utilizes `DropletUtils` to compute the sums and barcode ranks
+
+```{r, eval = FALSE}
+ranks <- DropletUtils::barcodeRanks(sce)
+uniq <- !duplicated(ranks$rank)
+ranks_uniq <- ranks[uniq,]
+ranks_uniq %>%
+  ggplot(aes(x = rank, y = total)) +
+  geom_point() +
+  xlab("Barcode Rank") +
+  ylab("Total UMI Count") +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_bw()
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_64#slide=id.g3e545ed5e7a_0_64")
+```
+
+Both plots look the same and the tools that I've used either suggest keeping every droplet, or won't run because it estimates that too much of the sample is contamination. This is the case for `SoupX` which suggested that the estimated contamination level was high (which is to be expected from `snRNA-seq` data): https://github.com/constantAmateur/SoupX/issues/76.
+
+Therefore, I'm turning to a tool that was designed specifically for this task in snRNA-seq data. DIEM or "Debris Identification using Expectation Maximization".
+
+**Working on running this within a script for each sample instead of an interactive session since the EM step takes quite a bit of time.**
+
+```{r, eval = FALSE}
+test_sce <- create_SCE(assays(sce_list[["1C"]])$counts)
+
+# Plot total counts ranked
+barcode_rank_plot(test_sce)
+
+# DIEM steps
+diem_sce_1c <- set_debris_test_set(test_sce)
+diem_sce_1c <- filter_genes(diem_sce_1c)
+diem_sce_1c <- get_pcs(diem_sce_1c)
+diem_sce_1c <- init(diem_sce_1c)
+diem_sce_1c <- run_em(diem_sce_1c)
+diem_sce_1c <- assign_clusters(diem_sce_1c)
+diem_sce_1c <- estimate_dbr_score(diem_sce_1c)
+
+# Evaluate debris scores
+sm <- summarize_clusters(diem_sce_1c)
+plot_clust(diem_sce_1c, feat_x = "n_genes", feat_y = "score.debris",
+           log_x = TRUE, log_y = FALSE)
+plot_clust(diem_sce_1c, feat_x = "pct.mt", feat_y = "score.debris",
+           log_x = TRUE, log_y = FALSE)
+
+# Call targets using debris score for single-nucleus data
+diem_sce_1c <- call_targets(diem_sce_1c, thresh_score = 0.5)
+
+# Call targets by removing droplets in debris cluster(s) for single-cell data
+diem_sce_1c <- call_targets(diem_sce_1c, clusters = "debris", thresh = NULL)
+
+```
+
+Likely will provide filtering output suggestions from DIEM (if there are any) to learners using a cooking show approach rather than having them run it themselves.
+
+### Filter for non-informative genes
+
+```{r, eval = FALSE}
+rowData(sce)$keep_informative <- rowSums(assays(sce)$counts > 0) > 10
+table(rowData(sce)$keep_informative)
+```
+
+```
+FALSE  TRUE
+23521 30943
+```
+
+What thresholds is appropriate here? This code is currently finding genes that have a non-zero count in at least 11 droplets. [As described in this resource](https://link.springer.com/protocol/10.1007/978-1-0716-1307-8_19#Sec23), we want to make sure we're not potentially removing the ability to detect rare cell types and we might be able to use clustering to help tune this number
+
+:::{.column-margin}
+And when is the right time to do this step filtering out non-informative genes? I'm fairly certain after ambient RNA detection and before normalization I would expect, but I'm not sure if it needs to be before other QC steps as well.
+:::
+
+Note that my computational environment struggles unless I constantly overwrite sce. To increase feasibility, I think
+
+* we need to show learners how to remove large things we won't need again from the environment
+* avoid writing intermediates (like `sce_filter`)
+
+
+### Use perCellQCMetrics to identify low quality or damaged droplets
+
+(rename this heading because of need for different function)
+
+```{r, eval = FALSE}
+qcmetrics <- scuttle::perCellQCMetrics(sce, subsets = list(Mito = which(rowData(sce)$is_mito)))
+```
+
+<details><summary>Warning message about deprecation</summary>
+
+> Warning message:
+In .per_cell_qc_metrics(assay(x, assay.type), subsets = subsets,  :
+  'perCellQCMetrics' is deprecated.
+Use 'scrapper::computeRnaQcMetrics' instead.
+
+</details>
+
+```{r, eval = FALSE}
+lowFeatures <- scuttle::isOutlier(qcmetrics$detected, type="lower", log=TRUE) #low number of genes
+lowLib <- isOutlier(qcmetrics$sum, type="lower", log=TRUE) #low library depth
+highMito <- isOutlier(qcmetrics$subsets_Mito_percent, type="higher") #high percentage of mitochondrial genes
+remove <- lowFeatures | lowLib | highMito
+table(remove)
+```
+
+```
+FALSE  TRUE
+61051  4938
+```
+
+```{r, eval = FALSE}
+filterSuggestions <- list(Features = which(lowFeatures), Library = which(lowLib), Mitochondrial = which(highMito))
+ggVennDiagram(filterSuggestions)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_0#slide=id.g3e7277bd573_0_0")
+```
+
+(Add a dropdown section describing MAD (median absolute deviation) and how that is computed as the median of the absolute value of the differences of the observed values from the median of the observed values) and how they're using 3 of those to try to get the outliers from normally distributed data.... plot your data and if it doesn't look normal this approach might not be for you.)
+
+But since this is using a deprecated function, let's switch to the `scrapper` function that is suggested within the warning message.
+
+However, when I try to use `scrapper::computeRnaQcMetrics`, I get an error that it doesn't work with SummarizedExperiment inputs and to look at the `quickRnaQc.se` function from `scrapper` instead.
+
+Note: I'm not necessarily planning to show the whole evolution of planning to use `perCellQCMetrics` and pivoting over to using `quickRnaQc.se`, but am documenting it here since it's a departure from the original plan.
+
+```{r, eval = FALSE}
+sce <- scrapper::quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)))
+table(!sce$keep)
+```
+
+:::{.column-margin}
+When working through single cell data with Galaxy tutorials, and working with spatial data for another case study, I've seen two sided filters for the number of genes/features and library size where it's not just excluding droplets with a certain value below a minimum, but also excluding those with a certain value above a maximum. However, I haven't seen any OSCA or OSCA related tutorials doing a similar thing. The authors in their vignette also only show a lower test. Should I be utilizing a maximum filter too? The default `scrapper` package behavior is to only look at the lower limits for `sum` and `detected`.
+:::
+
+```
+FALSE  TRUE
+61051  4938
+```
+
+We see that this approach is suggesting the removal of the same number of droplets. And from consulting the documentation on the function, it's just a faster/more efficient implementation of the same steps that we did using `scuttle`. Both use "adaptive" thresholds that depend upon what is observed in the data and the median absolute deviation that is observed for each metric across all the droplets. This one however has a few differences,
+
+* in one line of code, adds `colData` telling us what we should keep in addition to the `sum`, `detected`, and `subset.proportion.Mito` values that the scuttle function previously returned. Previously that required additional `scuttle` functions to do.
+* It also returns the thresholds that it used to from those values to decide on which droplets should be filtered.
+* This one returns a `SingleCellExperiment` object while scuttle only returned a dataframe.
+
+(Add a dropdown section comparing and contrasting this adaptive threshold/MAD approach with fixed threshold values as described here: https://bioconductor.org/books/release/scrapbook/quality-control.html#qc-fixed)
+
+```{r, eval=FALSE}
+metadata(sce)$qc$thresholds
+```
+
+```
+$sum
+[1] 1089.368
+
+$detected
+[1] 917.9337
+
+$subset.proportion
+      Mito
+0.01257568
+```
+
+```{r, eval = FALSE}
+scater::plotColData(sce,
+                    y = "subset.proportion.Mito",
+                    colour_by="keep")
+sce$highMito <- sce$subset.proportion.Mito >= metadata(sce)$qc$thresholds$subset.proportion[["Mito"]]
+plotColData(sce,
+            y = "subset.proportion.Mito",
+            åcolour_by = "highMito")
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_13#slide=id.g3e545ed5e7a_0_13")
+```
+
+```{r, eval = FALSE}
+plotColData(sce,
+            y = "detected",
+            colour_by = "keep")
+sce$lowFeature <- sce$detected <= metadata(sce)$qc$thresholds$detected
+plotColData(sce,
+            y = "detected",
+            colour_by = "lowFeature")
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_12#slide=id.g3e7277bd573_0_12")
+```
+
+```{r, eval = FALSE}
+plotColData(sce,
+            y = "sum",
+            colour_by = "keep")
+sce$lowLibrary <- sce$sum <= metadata(sce)$qc$thresholds$sum
+plotColData(sce,
+            y = "sum",
+            colour_by = "lowLibrary")
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_19#slide=id.g3e7277bd573_0_19")
+```
+
+:::{.emphasis_block}
+<details><summary>Alternative QC visualizations</summary>
+
+sum vs detected
+
+```{r, eval = FALSE}
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "keep")
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "lowLibrary")
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "lowFeature")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_32#slide=id.g3e545ed5e7a_0_32")
+```
+
+```{r, eval = FALSE}
+plotColData(sce,
+            x = "sum",
+            y = "detected",
+            colour_by = "subset.proportion.Mito",
+            point_alpha = 0.25) +
+  scale_color_viridis_c(direction = -1)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_64#slide=id.g3ec2fe01f05_1_64")
+```
+
+sum vs mito
+
+
+```{r, eval = FALSE}
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "keep")
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "lowLibrary")
+plotColData(sce,
+            x = "sum",
+            y = "subset.proportion.Mito",
+            colour_by = "highMito")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_37#slide=id.g3e545ed5e7a_0_37")
+```
+
+detected vs mito
+
+```{r, eval = FALSE}
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "keep")
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "lowFeature")
+plotColData(sce,
+            x = "detected",
+            y = "subset.proportion.Mito",
+            colour_by = "highMito")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e545ed5e7a_0_59#slide=id.g3e545ed5e7a_0_59")
+```
+
+</details>
+:::
+
+#### What if this low quality filtering were aware of the sample ID information?
+
+Let's save the old output (so we can compare suggested thresholding later), by renaming the column names and metadata
+
+```{r, eval = FALSE}
+colData(sce) <- colData(sce) %>%
+  as.data.frame() %>%
+  rename_with( ~ paste0("nb_", .x), #nb for non-block
+              .cols = -all_of(c("whitelist", "sample_id", "condition", "replicate"))) %>%
+  DataFrame()
+
+metadata(sce)$nb_qc$thresholds <- metadata(sce)$qc$thresholds
+```
+
+```{r, eval = FALSE}
+sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)),
+                          block = sce$sample_id)
+table(!sce$keep)
+```
+
+```
+FALSE  TRUE
+61168  4821
+```
+
+We keep a little over 100 droplets we would have otherwise filtered.
+
+```{r, eval = FALSE}
+sce$highMito <- sce$subset.proportion.Mito >= metadata(sce)$qc$thresholds$subset.proportion[["Mito"]][sce$sample_id]
+sce$lowFeature <- sce$detected <= metadata(sce)$qc$thresholds$detected[sce$sample_id]
+sce$lowLibrary <- sce$sum <= metadata(sce)$qc$thresholds$sum[sce$sample_id]
+```
+
+```{r, eval = FALSE}
+gridExtra::grid.arrange(
+    plotColData(sce, y="sum", x="sample_id", colour_by="keep") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$sum, levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Total count"),
+    plotColData(sce, y="detected", x="sample_id", colour_by="keep") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$detected, levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Detected features"),
+    plotColData(sce, y="subset.proportion.Mito", x="sample_id", colour_by="keep") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$subset.proportion[["Mito"]], levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        ggtitle("Mito proportion"),
+    nrow = 3)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_26#slide=id.g3e7277bd573_0_26")
+```
+
+Note that this plot is related to [Figure S1 from the paper](https://www.cell.com/cms/10.1016/j.isci.2024.110752/attachment/e203a712-8903-4c27-a793-bead27a29690/mmc1.pdf) but uses an inverted color scheme.
+
+And considering the sample violin plots for each of these metrics, we can see that different samples (like 5C and 2E) need more conservative thresholds than other samples. By using less conservative thresholds with the other samples, we end up retaining more data. Because the samples were likely processed separately, this makes sense that they might have different environments driving differences in filtering needs.
+
+```{r, eval = FALSE}
+gridExtra::grid.arrange(
+    plotColData(sce, y="sum", x="sample_id", colour_by="lowLibrary") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$sum, levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Total count"),
+    plotColData(sce, y="detected", x="sample_id", colour_by="lowFeature") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$detected, levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Detected features"),
+    plotColData(sce, y="subset.proportion.Mito", x="sample_id", colour_by="highMito") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$subset.proportion[["Mito"]], levels=NULL, linetype="dashed", color="purple") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        ggtitle("Mito proportion"),
+    nrow = 3)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_32#slide=id.g3e7277bd573_0_32")
+```
+
+But is this true? Let's visualize it a couple of ways.
+
+```{r, eval = FALSE}
+
+gridExtra::grid.arrange(
+    plotColData(sce, y="sum", x="sample_id", colour_by="lowLibrary") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$sum, levels=NULL, linetype="dashed", color="purple") +
+        categoricalHlines(unique(sce$sample_id), metadata(sce)$nb_qc$thresholds$sum, levels = NULL, linetype = 'dashed', color = "darkgrey") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Total count"),
+    plotColData(sce, y="detected", x="sample_id", colour_by="lowFeature") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$detected, levels=NULL, linetype="dashed", color="purple") +
+        categoricalHlines(unique(sce$sample_id), metadata(sce)$nb_qc$thresholds$detected, levels = NULL, linetype = 'dashed', color = "darkgrey") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        scale_y_log10() +
+        ggtitle("Detected features"),
+    plotColData(sce, y="subset.proportion.Mito", x="sample_id", colour_by="highMito") +
+        categoricalHlinesNamed(metadata(sce)$qc$thresholds$subset.proportion[["Mito"]], levels=NULL, linetype="dashed", color="purple") +
+        categoricalHlines(unique(sce$sample_id), metadata(sce)$nb_qc$thresholds$subset.proportion[["Mito"]], levels = NULL, linetype = 'dashed', color = "darkgrey") +
+        scale_x_discrete(guide = guide_axis(angle = 45)) +
+        ggtitle("Mito proportion"),
+    nrow = 3)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_37#slide=id.g3e7277bd573_0_37")
+```
+
+```{r, eval = FALSE}
+filterSampleSuggestions <- list(Features = which(sce$lowFeature),
+                                Library = which(sce$lowLibrary),
+                                Mitochondrial = which(sce$highMito))
+ggVennDiagram(filterSampleSuggestions)
+```
+
+```{r, echo = FALSE, warning = FALSE, out.width=800}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3e7277bd573_0_42#slide=id.g3e7277bd573_0_42")
+```
+
+note that the [advanced section of the OSCA book](https://bioconductor.org/books/3.14/OSCA.advanced/single-nuclei-rna-seq-processing.html#quality-control-for-stripped-nuclei) suggests that this adaptive thresholding approach may not work for single nuclear data, specifically with respect to mitochondrial reads, because the MAD may be too close to zero and then too much is getting filtered out. Another important note is [mentioned here in this paper](https://link.springer.com/protocol/10.1007/978-1-0716-1307-8_19#Sec23) that certain types of data are going to have much higher mitochondrial activity and that should be taken into account when setting a threshold
+
+### Identify doublets for removal
+
+Note that the approach the paper used was to first normalize the data, then find the top variable genes, then compute the doublet density estimate/scores, and using the Griffiths method for thresholding to flag doublets. This mirrors the old scran approach that is now deprecated
+
+* https://rissolab.github.io/AtlasCortexSD/articles/1_ct_anno.html#doublets-removal
+* https://plger.github.io/scDblFinder/articles/introduction.html#computedoubletdensity
+
+I chose to use this more streamlined approach rather than the approach the paper used for a couple of reasons
+
+* The paper approach would have required running normalization first (and I can use this opportunity to explain the nuance that some doublet detection tools/methods require that)
+* The tool documentation recommends this approach over the Griffiths method saying it's the most accurate in their benchmarking
+* I didn't see any snRNA-seq specific advice
+
+This approach does have a clustering option, but the package maintainers suggest using it if your data very clearly clusters or you're interested in where the doublets originated from. https://plger.github.io/scDblFinder/articles/scDblFinder.html#should-i-use-the-cluster-based-doublet-generation-or-not
+
+:::{.column-margin}
+In your expert opinion, is there any problem with using `scDblFinder` rather than the `computeDoubletDensity` and Griffiths method approach?
+:::
+
+```{r, eval = FALSE}
+set.seed(8902) #need to set random seed because of the simulation this tool is doing
+sce <- scDblFinder::scDblFinder(sce, samples="sample_id")
+```
+:::{.column-margin}
+I don't think there's much I can do about these warnings messages for deprecation since the `scDblFinder` package is using those deprecated functions.
+:::
+
+<details><summary>Warning messages</summary>
+
+```
+Warning messages:
+1: In .checkSCE(sce, coerce = is.null(samples)) :
+  Some cells in `sce` have an extremely low read counts; note that these could trigger errors and might best be filtered out
+2: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+3: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+4: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+5: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+6: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+7: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+8: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+9: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+10: In .checkSCE(sce, coerce = is.null(samples)) :
+  Some cells in `sce` have an extremely low read counts; note that these could trigger errors and might best be filtered out
+11: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+12: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+13: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+14: In .local(x, ...) : 'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+```
+
+</details>
+
+```{r, eval = FALSE}
+table(colData(sce)$scDblFinder.class)
+```
+
+```
+singlet doublet
+  60860    5129
+```
+
+Notice that we've saved all of the necessary quality filtering flags in either the `rowData` (for non-informative gene filtering) or `colData` for droplet filtering.
+
+If we consider the library size, number of genes detected, and mitochondrial proportion metrics we were looking at earlier, the droplets identified as doublets would be difficult to disentangle using only those metrics.
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum",
+                 y = "detected",
+                 colour_by = "subset.proportion.Mito",
+                 point_alpha = 0.25,
+                 other_fields = "scDblFinder.class") +
+  scale_color_viridis_c(direction = -1) +
+  facet_wrap(~`scDblFinder.class`)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_15#slide=id.g3edd2726cba_0_15")
+```
+
+In fact, there are several cells that the MAD thresholds would suggest keeping that appear to be doublets which should be removed.
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum",
+                 y = "detected",
+                 colour_by = "keep",
+                 point_alpha = 0.25,
+                 other_fields = "scDblFinder.class") +
+  facet_wrap(~`scDblFinder.class`)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_19#slide=id.g3edd2726cba_0_19")
+```
+
+```{r, eval = FALSE}
+filterSuggestions <- list(MAD_thresholding = which(!sce$keep),
+                          doublets = which(sce$scDblFinder.class == "doublet"))
+ggVennDiagram(filterSuggestions)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_47#slide=id.g3ec2fe01f05_1_47")
+```
+
+Add instructions for saving data in case people take a break (my file is `data/wrangled/sce_filter_annot.rds`)
+
+## Part 3: Applying QC Filters and Normalization
+
+Add instructions for loading data in case people take a break and come back here
+
+### Applying the filters ....
+
+:::{.column-margin}
+I should wait to apply all of the filters at the same time prior to normalization rather than applying them after each step, correct? scDblFinder maintainer suggests I should https://github.com/plger/scDblFinder/issues/40 but then I'm also getting a warning from the package when I run the function saying there are cells with extremely low counts. And I see other people on forums recommending that I should remove ambient RNA flagged droplets prior to doublet detection
+:::
+
+How do the suggested filters from our process compare to the whitelist output from salmon alevin?
+
+```{r, eval = FALSE}
+keepSuggestions <- list(qcKeep = which(sce$keep & (sce$scDblFinder.class == "singlet")),
+                        salmonKeep = which(sce$whitelist))
+ggVennDiagram(keepSuggestions)
+```
+
+```{r, eval = FALSE}
+ottrpal::include_slide('https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_52#slide=id.g3ec2fe01f05_1_52')
+```
+
+#### Droplet-level filtering
+
+```{r, eval = FALSE}
+sce$combined_keep <- sce$keep & (sce$scDblFinder.class == "singlet") #add in ambient RNA detection filter here too after diem run
+sce <- sce[,sce$combined_keep]
+```
+
+#### Gene-level filtering
+
+```{r, eval = FALSE}
+sce <- sce[rowData(sce)$keep_informative,] #non-informative gene filter
+```
+
+### What does the data look like now?
+
+#### Quality control metrics revisited
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "detected", colour_by = "subset.proportion.Mito", point_alpha = 0.25) + scale_color_viridis_c(direction = -1)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_57#slide=id.g3ec2fe01f05_1_57")
+```
+
+After filtering out the cells that our process identified, if we plot those QC metrics and color by whether or not `salmon alevin` would have kept them, we can see which cells it would have removed.
+
+```{r, eval = FALSE}
+plotColData(sce, x = "sum", y = "detected", colour_by = "whitelist", point_alpha = 0.25)
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3ec2fe01f05_1_72#slide=id.g3ec2fe01f05_1_72")
+```
+
+#### New dimensions
+
+```{r, eval = FALSE}
+dim(sce)
+```
+
+```
+[1] 30943 56537
+```
+
+#### Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$counts) %>%
+     as.data.frame() %>%
+     ggplot(aes(x=`.`)) +
+     geom_histogram(bins = 500) +
+     theme_bw() +
+     xlab("library size after QC")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_1#slide=id.g3edd2726cba_0_1")
+```
+
+Now we have many more nuclei than genes (as we had expected). More than twice the number of nuclei compared to genes. And we can be more confident in describing the rows as genes rather than features and the columns as nuclei rather than droplets.
+
+We can also free up some memory space again
+
+```{r, eval = FALSE}
+rm(filterSuggestions)
+rm(keepSuggestions)
+rm(sce_list)
+```
+
+### Transformation
+
+We'll want to perform the normalization transformation for each sample separately so we'll
+
+* first separate our `sce` object by sample_id into a list again
+* for each sample specific `SingleCellExperiment` object in the list, we'll perform normalization.
+* We'll then recombine the data into a single `SingleCellExperiment` object
+
+#### Option A: logNormCounts
+
+```{r, eval = FALSE}
+sce_list <- split(sce, sce$sample_id)
+names(sce_list) <- make.names(names(sce_list)) #if we don't do this, the names begin with a number and we won't be able to as easily access the different samples
+
+sce_list <- lapply(sce_list, function(sub_sce) {
+
+  assay(sub_sce, "logcounts") <- scran::logNormCounts(sub_sce)
+
+  return(sub_sce)
+})
+
+```
+
+<details><summary>Some warnings showed up about deprecated functions that `logNormCounts` is using</summary>
+
+```
+Warning messages:
+1: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+2: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+3: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+4: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+5: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+6: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+7: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+8: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+9: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+10: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+11: In .library_size_factors(assay(x, assay.type), ...) :
+  'librarySizeFactors' is deprecated.
+Use 'scrapper::centerSizeFactors' instead.
+See help("Deprecated")
+12: In .local(x, ...) : 'normalizeCounts' is deprecated.
+Use 'scrapper::normalizeCounts' instead.
+See help("Deprecated")
+```
+
+</details>
+
+
+Given the deprecation warnings, I think we should use `scrapper` functions instead of `scran` functions for this
+
+```{r, eval = FALSE}
+sce <- scrapper::normalizeRnaCounts.se(sce,
+                                       size.factors = sce$sum,
+                                       block = sce$sample_id)
+```
+
+#### Normalized Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$logcounts) %>%
+     as.data.frame() %>%
+     ggplot(aes(x=`.`)) +
+     geom_histogram(bins = 500) +
+     theme_bw() +
+     xlab("library size after normalization")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_5#slide=id.g3edd2726cba_0_5")
+```
+
+#### Option B: account for nuclei size
+
+Deconvolution
+
+:::{.column-margin}
+Since quick clustering is being used within this approach to group cells of similar expression profiles, is it ever recommended to perform cell type assignment prior to deconvolution normalization?
+:::
+
+```{r, eval = FALSE}
+clusters.block <- scran::quickCluster(sce, block = sce$sample_id)
+deconv_sf <- calculateSumFactors(sce, clusters = clusters.block)
+sce <- normalizeRnaCounts.se(sce,
+                                size.factors=deconv_sf,
+                                block = sce$sample_id,
+                                output.name = "deconvcounts",
+                                factor.name = "deconvSizeFactor")
+```
+
+#### Normalized Expression visualized
+
+```{r, eval = FALSE}
+colSums(assays(sce)$deconvcounts) %>%
+    as.data.frame() %>%
+    ggplot(aes(x=`.`)) +
+    geom_histogram(bins = 500) +
+    theme_bw() +
+    xlab("library size after deconvolution normalization")
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3edd2726cba_0_10#slide=id.g3edd2726cba_0_10")
+```
+
+:::{.column-margin}
+I didn't find any vignettes or walkthroughs that did deconvolution with `scrapper` and using completely `scran` didn't have the `block` option and would have required me to split the objects into a list and then recombine them. Does this look correct in the way I've combined the `scran` and `scrapper` functions to perform deconvolution normalization?
+:::
+
+#### Comparing the options
+
+```{r, eval = FALSE}
+quantile(deconv_sf)
+```
+
+```
+        0%        25%        50%        75%       100%
+ 0.2564244  0.6933694  0.8708276  1.1582113 17.5060382
+```
+
+```{r, eval = FALSE}
+quantile(sce$sizeFactor)
+```
+
+```
+        0%        25%        50%        75%       100%
+ 0.3485906  0.9291513  1.1808229  1.5627790 22.0076022
+```
+
+Looking at the two plots, I think that the deconvolution option is my preferred one because of the tighter bell-shaped curve. The regular log counts approach has a broader range of values, seems skewed, and also multimodal.
+
+Add instructions for saving data here. My file is `data/wrangled/sce_norm.rds`
+
+## A summary of the data wrangling steps
+
+... Adding a summary of the data wrangling steps directly related to data handling in this section that I propose we use (since above this section I showed methods that either didn't take batch into account or used deprecated functions)
+
+```{r, eval = FALSE}
+# Data Prep
+
+exon_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(!grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+exon_data <- snrna_data[exon_ids]
+
+intron_ids <- rowData(snrna_data) %>%
+     as.data.frame() %>%
+     dplyr::filter(grepl("-I", gene_id)) %>%
+     pull(gene_id)
+
+intron_data <- snrna_data[intron_ids]
+
+pattern_to_remove <- "\\..*"
+replace_string <- ""
+
+exon_ids <- sub(pattern_to_remove, replace_string, exon_ids)
+intron_ids <- sub(pattern_to_remove, replace_string, intron_ids)
+
+rownames(exon_data) <- exon_ids
+rownames(intron_data) <- intron_ids
+rownames(snrna_data) <- sub(pattern_to_remove, replace_string, rownames(snrna_data))
+
+same_ensembl <- intersect(exon_ids, intron_ids)
+
+snrna_data_ids_subset <- rownames(snrna_data) %>%
+  as.data.frame() %>%
+  dplyr::filter(!. %in% same_ensembl) %>%
+  pull(.)
+
+sce <- SingleCellExperiment(assays = list(counts = rbind(counts(snrna_data[snrna_data_ids_subset]),
+    counts(exon_data[same_ensembl]) + counts(intron_data[same_ensembl]))))
+
+colData(sce) <- colData(snrna_data)
+rowData(sce) <- rbind(rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% snrna_data_ids_subset),
+                      rowData(snrna_data) %>%
+                        as.data.frame() %>%
+                        dplyr::filter(rownames(.) %in% same_ensembl)
+                      )
+
+
+
+
+sce <- sce %>%
+    mutate(condition = case_when(str_detect(sample_id, "C") ~ "Control",
+                                 str_detect(sample_id, "E") ~ "SleepDeprived"
+                                )
+          ) %>%
+    mutate(replicate = factor(str_remove(sample_id, "C|E")))
+
+map <- AnnotationDbi::mapIds(EnsDb.Mmusculus.v79, keys = rownames(sce), column = "SEQNAME",
+                             keytype = "GENEID")
+rowData(sce)$CHR <- map
+rowData(sce)$is_mito <- case_when(
+  rowData(sce)$CHR == "MT"  ~ TRUE,
+  .default = FALSE
+)
+
+# QC to identify filters
+
+## Ambient RNA detection <- will need to fill in
+
+sce_list <- split(sce, sce$sample_id)
+names(sce_list) <- make.names(names(sce_list)) #if we don't do this, the names begin with a number and we won't be able to as easily access the different samples
+names(sce_list)
+
+## non-informative genes
+
+rowData(sce)$keep_informative <- rowSums(assays(sce)$counts > 0) > 10
+
+## library size, detected genes, mito percent
+
+sce <- quickRnaQc.se(sce, subsets = list(Mito = which(rowData(sce)$is_mito)),
+                          block = sce$sample_id)
+
+## doublets
+
+set.seed(8902) #need to set random seed because of the simulation this tool is doing
+sce <- scDblFinder::scDblFinder(sce, samples="sample_id")
+
+# Applying Filters
+
+sce$combined_keep <- sce$keep & (sce$scDblFinder.class == "singlet") #add in ambient RNA detection filter here too after diem run
+sce <- sce[,sce$combined_keep]
+
+sce <- sce[rowData(sce)$keep_informative,] #non-informative gene filter
+
+# Normalization
+
+## Option A: logcounts
+
+sce <- scrapper::normalizeRnaCounts.se(sce,
+                                       size.factors = sce$sum,
+                                       block = sce$sample_id)
+
+# visualize
+
+## Option B: deconvolution
+
+sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+deconv_sf <- scran::calculateSumFactors(sce, clusters = sce$quickClusters)
+sce <- normalizeRnaCounts.se(sce,
+                                size.factors=deconv_sf,
+                                block = sce$sample_id,
+                                output.name = "deconvcounts",
+                                factor.name = "deconvSizeFactor")
+
+# visualize
+
+# Save the data
+
+```
+
+## Summary of the order of steps that I expect for this section in the end ....
+
+Option A:
+
+1. Handle Introns and Exons
+2. Mark Mitochondrial Genes
+3. Ambient RNA detection with `diem`
+4. Ambient RNA flagged droplet removal?
+5. Non-informative gene flagging
+6. removal of non-informative genes?
+7. Low quality or damaged droplet QC MAD thresholding using `scrapper` (low library, low features, high mitochondrial)
+8. filtering or low quality or damaged droplets?
+9. doublet identification with `scDblFinder`
+10. doublet removal
+11. Normalization (noting that normalization may be necessary prior to using some doublet detection tools)
+
+Option B:
+
+1. Handle Introns and Exons
+2. Mark Mitochondrial Genes
+3. Ambient RNA detection with `diem`
+4. Non-informative gene flagging
+5. Low quality or damaged droplet QC MAD thresholding using `scrapper` (low library, low features, high mitochondrial)
+6. doublet identification with `scDblFinder`
+7. Combine filters for droplets (ambient RNA, doublets, MAD thresholding) and filter
+8. Filter non-informative genes
+9. Normalization (noting that normalization may be necessary prior to using some doublet detection tools, but redo it after filtering too)
+
+Option C:
+
+Expert recommendations?
+
+
+::: {.column-margin}
+Which of these options should I be using to order steps within this section for proper QC and normalization?
+:::
+
+Notice that of the steps listed above, certain steps are done in a sample specific manner (whether that be by using a function parameter or splitting the data into an `sce_list`)
+
+* Ambient RNA detection (`sce_list`)
+* MAD thresholding for low quality or damaged droplets (function parameter)
+* Doublet Identification (function parameter)
+* logcount normalization (function parameter)
+* Deconvolution Normalization (function parameter, though `sce_list` if only `scran` functions)
+
+Flagging non-informative genes is done globally, considering all of the data together
 
 ***

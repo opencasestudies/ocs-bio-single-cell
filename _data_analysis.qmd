@@ -3,23 +3,17 @@
 
 If you have been following along but stopped, we could load our wrangled data like so:
 
-```{r}
-load(here::here("data", "wrangled", "wrangled_data.rda"))
-```
+Add instructions for loading data
 
 ***
 <details> <summary> If you skipped the data import section click here. </summary>
 
-An RDA file (stands for R data) of the data can be found [here](https://github.com//opencasestudies/ocs-bp-co2-emissions/tree/master/data/wrangled) or slightly more directly [here](https://raw.githubusercontent.com/opencasestudies/ocs-bp-co2-emissions/master/data/wrangled/wrangled_data.rda). Download this file and then place it in your current working directory within a subdirectory called "wrangled" within a subdirectory called "data" to use the following code. We used an RStudio project and the [`here` package](https://github.com/jennybc/here_here) to navigate to the file more easily.
-
-
-```{r}
-load(here::here("data", "wrangled", "wrangled_data.rda"))
-```
+Add instructions for loading data
 
 </details>
 ***
 
+<!--
 :::{.think_question}
 ::::{.think_question_header}
 Question opportunity
@@ -35,10 +29,316 @@ You can use a collapsible details section to provide an answer
 ::: {.column-margin}
 We might use a column margin note to add an equation or some other annotation for learners or educators.
 :::
-
-<!--
-Use this section to walk through the methods and code used in the data analysis step-by-step.
-Explain how this analysis helps answer the main questions posed earlier in the case study.
 -->
+
+We have a couple of spots so far in the process where we've had to make decisions and have a couple of options that will work, but we want to compare these options to decide which one is better for us. This specific comparison isn't necessarily something that researchers will want to do. And perhaps for the normalization step, looking at the plot to see if there's a bell curve is enough. But this analysis section is showing how we can find some stats out about our data, and showing how to evaluate those possible combinations / choices. We're going to use a package named `pipeComp` for this because we can work with functions rather than scripts.
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3f257b01c5b_0_0#slide=id.g3f257b01c5b_0_0")
+```
+
+## Put the process together with `pipeComp`
+
+We'll focus on combining the normalization and aggregation processes and ask a few questions about the normalized/aggregated data.
+
+> What is the highest expressed gene (within the clusters/samples)? What is its observed normalized expression?
+
+For this we'll want to look at within cluster/sample normalized expression and find the highest value and report that back. We can figure out which gene is the highest across the most number of clusters/samples. We'll specifically report back the gene name, how many clusters/samples it's the highest for, and the observed normalized expression value. We'll call this `"max"`.
+
+> How many genes have no observed normalized expression within a cluster/sample?
+
+For this we'll want to look within cluster/sample normalized expression values and find how many 0s there are. We can find the quartiles across the clusters/samples and report those numbers back (`0%`, `25%`, `50%`, `75%`, and `100%`). We'll call this `"min"`.
+
+> What is the highest observed variance of normalized expression (across the clusters/samples)? Which gene exhibits this amount of variance?
+
+For this we'll find the variance of each gene's observed normalized expression across clusters/samples and then return the highest variance observed and which gene has that variance. We'll call this `"variance"`.
+
+> What is the lowest observed median normalized expression (within the clusters/samples)? Which gene is closest to this value?
+
+For this we'll find the median observed normalized expression value within each cluster/sample. We'll then find which gene in that cluster/sample that has the closest observed normalized expression. Finally, we'll pick the lowest value across all the clusters reporting the gene, the median value, and the grouping_id for the cluster or sample that gene was identified for. We'll call this `"median"`.
+
+We can compare the results of each of these across different combinations of normalization and aggregation.
+
+We'll want to build some functions with parameters that control the functions/behavior so that we can use `pipeComp`.
+
+The alternatives/choices we want to work with are
+
+```{r, eval = FALSE}
+alternatives <- list(
+  par1=c("logcounts", "deconvolution"),
+  par2=c("sum", "average"),
+  par3 = c("cluster", "sample"),
+  par4 = c("max", "min", "variance", "median")
+)
+comb <- pipeComp::buildCombMatrix(alternatives)
+comb
+```
+
+```
+par1    par2    par3     par4
+1      logcounts     sum cluster      max
+2      logcounts     sum cluster      min
+3      logcounts     sum cluster variance
+4      logcounts     sum cluster   median
+5      logcounts     sum  sample      max
+6      logcounts     sum  sample      min
+7      logcounts     sum  sample variance
+8      logcounts     sum  sample   median
+9      logcounts average cluster      max
+10     logcounts average cluster      min
+11     logcounts average cluster variance
+12     logcounts average cluster   median
+13     logcounts average  sample      max
+14     logcounts average  sample      min
+15     logcounts average  sample variance
+16     logcounts average  sample   median
+17 deconvolution     sum cluster      max
+18 deconvolution     sum cluster      min
+19 deconvolution     sum cluster variance
+20 deconvolution     sum cluster   median
+21 deconvolution     sum  sample      max
+22 deconvolution     sum  sample      min
+23 deconvolution     sum  sample variance
+24 deconvolution     sum  sample   median
+25 deconvolution average cluster      max
+26 deconvolution average cluster      min
+27 deconvolution average cluster variance
+28 deconvolution average cluster   median
+29 deconvolution average  sample      max
+30 deconvolution average  sample      min
+31 deconvolution average  sample variance
+32 deconvolution average  sample   median
+```
+
+Can build the functions in the narrative rather than just providing them.
+
+```{r, eval = FALSE}
+
+#' A function to drive the normalization and aggregation process
+#'
+#' @parameter load_data either TRUE or FALSE. Will load data if TRUE, will run the normalization process if FALSE (unless provided sce has the names associated with the data already)
+#' @parameter norm_method either logcounts or deconvolution
+#' @parameter sce default is NULL, provide if load_data is FALSE. Should be a SingleCellExperiment object that is filtered but not yet normalized. Should have colData columns `sum` and `sample_id`
+#' @parameter aggregation_method either sum or average
+#' @parameter aggregation_across either cluster or sample
+#' @return sce the SingleCellExperiment object with the newly normalized data saved in either the `logcounts` or `deconvcounts` assay slot
+
+
+norm_aggregate_data <- function(norm_method, load_data, aggregation_method, aggregation_across, sce = NULL){
+
+  # check parameter inputs
+  stopifnot(load_data %in% c(TRUE, FALSE))
+  stopifnot(norm_method %in% c('logcounts', 'deconvolution'))
+  stopifnot(aggregation_method %in% c('sum', 'average'))
+  stopifnot(aggregation_across %in% c('cluster', 'sample'))
+
+  # normalization
+
+  if (load_data){
+    sce <- readRDS(here("data/wrangled/sce_norm.rds"))
+  } else {
+    if (is.null(sce)){
+      stop("Must provide an sce object with filtered, unnormalized or normalized data and colData columns `sum` and `sample_id`.")
+    }
+    if (norm_method == "logcounts"){
+      if (!("logcounts" %in% names(assays(sce)))) {
+        sce <- scrapper::normalizeRnaCounts.se(sce,
+                                           size.factors = sce$sum,
+                                           block = sce$sample_id)
+      }
+    }
+    if (norm_method == "deconvolution"){
+      if (!("quickClusters" %in% names(colData(sce)) & "deconvcounts" %in% names(assays(sce)))){
+        sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+        deconv_sf <- scran::calculateSumFactors(sce, clusters = clusters.block)
+        sce <- normalizeRnaCounts.se(sce,
+                                 size.factors = deconv_sf,
+                                 block = sce$sample_id,
+                                 output.name = "deconvcounts",
+                                 factor.name = "deconvSizeFactor")
+      }
+    }
+  }
+
+  # aggregation
+
+  if(norm_method == "logcounts"){
+    assay_type <- "logcounts"
+  } else{
+    assay_type <- "deconvcounts"
+  }
+
+  if(aggregation_across == "cluster"){
+    coi <- "quickClusters"
+    if (!coi %in% names(colData(sce))){
+      sce$quickClusters <- scran::quickCluster(sce, block = sce$sample_id)
+    }
+  } else{
+    coi <- "sample_id"
+  }
+
+
+  if (aggregation_method == "sum"){
+    aggregated <- scrapper::aggregateAcrossCells.se(sce,
+                      colData(sce)[[coi]],
+                      assay.type = assay_type)
+    aoi <- "sums"
+  }
+
+  if (aggregation_method == "average"){
+    aggregated <- tidySingleCellExperiment::aggregate_cells(sce,
+                      .sample = coi,
+                      assays = assay_type)
+    names(assays(aggregated)) <- "averages"
+    aoi <- "averages"
+  }
+
+  return (assays(aggregated)[[aoi]])
+}
+
+#' A function to grab a specific descriptive stat or metric about the normalized and aggregated data
+#'
+#' @parameter agg_data the aggregated data
+#' @parameter sce Should be a SingleCellExperiment object that is filtered but not yet normalized. Should have colData column `sample_id` or `quickClusters`
+#' @parameter aggregation_method either sum or average
+#' @parameter aggregation_across either cluster or sample
+#' @parameter metric either max, min, variance, or median
+#'
+#' @return if metric is max the gene ID for the highest expressed gene (seen in the most aggregation_across) (as well as its expression)
+#'         if metric is min the average number of genes with no observed expression across the aggregation_across
+#'         if metric is variance the gene ID for the highest variance gene for variance across the aggregated clusters or samples (as well as its expression)
+#'         if metric is median the gene ID associated with the least median expression observed (as well as the median expression)
+#'
+
+grab_metric <- function(agg_data, metric){
+
+  stopifnot(metric %in% c('max', 'min', 'variance', 'median'))
+
+  col_names_res <- c("gene", "gene_count", "gene_avg",
+                     "0%", "25%", "50%", "75%", "100%",
+                     "median_value", "grouping_id",
+                     "variance")
+
+  if (metric == "max"){
+    result <- apply(agg_data, 2, function(col) {
+      c(gene = rownames(agg_data)[which.max(col)], max_value = max(col))
+    }) %>%
+      t() %>%
+      as.data.frame() %>%
+      group_by(gene) %>%
+      summarize(gene_count = n(),
+                gene_avg = mean(as.numeric(max_value))) %>%
+      slice_max(gene_count, n = 1, with_ties = FALSE)
+
+  }
+
+  if (metric == "min"){
+    result <- colSums(agg_data == 0) %>% quantile() %>% t() %>% as.data.frame()
+  }
+
+  if (metric == "variance"){
+    result <- apply(agg_data, 1, var) %>%
+      as.data.frame() %>%
+      slice_max(as.numeric(`.`), n = 1, with_ties = FALSE) %>%
+      dplyr::rename(., variance = `.`) %>%
+      mutate(gene = rownames(.))
+  }
+
+  if (metric == "median"){
+    result <- apply(agg_data, 2, function(col) {
+      # Calculate the standard median
+      med_val <- round(median(col),2)
+
+      # Find the row index of the value closest to the median
+      gene <- rownames(agg_data)[which.min(abs(col - med_val))]
+
+      c(gene = gene, median_value = med_val)
+    }) %>%
+      t() %>%
+      as.data.frame() %>%
+      mutate(grouping_id = as.factor(row_number())) %>%
+      slice_min(as.numeric(median_value), n = 1, with_ties = FALSE)
+  }
+
+  missing_cols <- setdiff(col_names_res, colnames(result))
+  result[missing_cols] <- NA
+
+  return(list(result))
+
+}
+
+
+```
+
+Putting these functions together into a pipeline that pipeComp can run through with our different parameter alternatives ....
+
+```{r, eval = FALSE}
+norm_aggregate_pipeline <- pipeComp::PipelineDefinition( list(
+  step1 = function(x, par1, par2, par3){
+    x <- norm_aggregate_data(par1, FALSE, par2, par3, x)
+  },
+  step2 = function(x, par4){
+    e <- grab_metric(x, par4)
+    list(x = x, intermediate_return = e)
+    }
+  ),
+  # 2. Tell pipeComp how to aggregate the metric from step2
+  aggregation = list(
+    step2 = pipeComp::defaultStepAggregation
+  )
+)
+```
+
+Warning message (which is spot on/exactly what I wanted to do which is to have my evaluation performed by the step's function itself)
+
+```
+Warning message:
+In pipeComp::PipelineDefinition(list(step1 = function(x, par1, par2,  :
+  An aggregation is defined for some steps that do not have a defined evaluation function:  step2 It is possible that evaluation is performed by the step's function itself.
+```
+
+## Running the pipeline with `pipeComp`
+
+Finally, we run the pipeline on the alternatives for our dataset. We do have to specify our dataset within a list.
+
+```{r, eval = FALSE}
+datasets <- list(sce = sce)
+res <- runPipeline(datasets, alternatives, norm_aggregate_pipeline)
+```
+
+## Viewing the results from `pipeComp`
+
+And we view the comparison
+
+```{r, eval = FALSE}
+pivot_wider(res$evaluation$step2[[1]],
+            names_from = par4,
+            values_from = c(gene, gene_count, gene_avg, `0%`, `25%`, `50%`, `75%`, `100%`, median_value, grouping_id, variance)) %>%
+            select(where(~ !all(is.na(.))))
+```
+
+```{r, echo = FALSE}
+ottrpal::include_slide("https://docs.google.com/presentation/d/1NwTGnca5G7c_dQLgNpYEgMJp2tWpyjjG7sl4t_vxTPg/edit?slide=id.g3f257b01c5b_0_3#slide=id.g3f257b01c5b_0_3")
+```
+
+What do we observe for each of our questions?
+
+### Max
+
+The gene with the maximum value in the most number of clusters/samples is the same no matter which combo we're looking at. That
+
+And what is the gene ...
+
+### Min
+
+Aggregating droplets within samples leads to many fewer genes with 0 observed normalized expression than when aggregating droplets within clusters.
+
+### Median
+
+Lots of variability with which genes are associated with the median. But we see that the median values themselves are fairly low. But they're relatively higher when looking at summing expression across samples.
+
+### Variance
+
+High variances, mostly 3 genes across the combinations. What are the genes?
 
 ***
