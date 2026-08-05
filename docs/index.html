@@ -208,11 +208,11 @@ gtag('config', 'G-208MKYZ02S', { 'anonymize_ip': true});
   <ul class="collapse">
   <li><a href="#objectives-map" id="toc-objectives-map" class="nav-link" data-scroll-target="#objectives-map"><strong>Objectives Map</strong></a></li>
   </ul></li>
-  <li><a href="#packages-and-setup" id="toc-packages-and-setup" class="nav-link" data-scroll-target="#packages-and-setup"><strong>Packages and Setup</strong></a></li>
   <li><a href="#context" id="toc-context" class="nav-link" data-scroll-target="#context"><strong>Context</strong></a></li>
   <li><a href="#what-are-the-data" id="toc-what-are-the-data" class="nav-link" data-scroll-target="#what-are-the-data"><strong>What are the data?</strong></a></li>
   <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><strong>Limitations</strong></a></li>
   <li><a href="#ethical-considerations" id="toc-ethical-considerations" class="nav-link" data-scroll-target="#ethical-considerations"><strong>Ethical Considerations</strong></a></li>
+  <li><a href="#packages-and-setup" id="toc-packages-and-setup" class="nav-link" data-scroll-target="#packages-and-setup"><strong>Packages and Setup</strong></a></li>
   <li><a href="#data-import" id="toc-data-import" class="nav-link" data-scroll-target="#data-import"><strong>Data Import</strong></a>
   <ul class="collapse">
   <li><a href="#read-in-data" id="toc-read-in-data" class="nav-link" data-scroll-target="#read-in-data">Read in data</a></li>
@@ -588,7 +588,72 @@ Don't adjust the shortcode or the table header in this file, only the markdown t
 </div>
 </div>
 <hr>
+<!--
+More details on the background on the case study topic as well its relation to biomedical science.
+Videos or images may be helpful so this includes an example of embedding a video.
+-->
 </section>
+</section>
+<section id="context" class="level1">
+<h1><strong>Context</strong></h1>
+<hr>
+<p>{FILL IN}</p>
+<div class="quarto-video ratio ratio-16x9"><iframe data-external="1" src="https://www.youtube.com/embed/j-I0Zgicjsk" title="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
+<hr>
+<!--
+Describe the data to be analyzed and where it came from.
+You may want to include a table about file or variable info.
+-->
+</section>
+<section id="what-are-the-data" class="level1">
+<h1><strong>What are the data?</strong></h1>
+<hr>
+<p>“Raw” Data is available 3 different ways for this project.</p>
+<ol type="1">
+<li>The <code>.fastq</code> files are <a href="https://trace.ncbi.nlm.nih.gov/Traces/index.html?run=SRR21020314">available on SRA</a>, with instructions on how they were aligned and counted using <code>salmon alevin</code> <a href="https://github.com/PeixotoLab/RNAseq_sleep/blob/main/README.md#running-salmon-alevin">available on the GitHub</a>.</li>
+<li>Slightly processed matrix files, separated for each of the 6 samples, <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE211088">available on GEO</a>.</li>
+<li>A <code>SingleCellExperiment</code> object of slightly processed data, for all 6 samples, <a href="https://zenodo.org/records/10091236">available on zenodo</a> are already stored as a specialized R class/object – a <code>SingleCellExperiment</code>. It has data for all 6 samples (“1C”, “2E”, “3C”, “4E”, “5C”, “8E”) in the one object.</li>
+</ol>
+<p><img src="img/singleCellExperimentObject.png" class="img-fluid"></p>
+<p>We’ll want to include information in the background sections on <code>.fastq</code> files being the raw data and how they get to where they are when we start working with them for this kind of a project.</p>
+<p>The zenodo data and object is the one that the vignette works with. Therefore, I think it would be worthwhile to include a side quest of how they got to that <code>SingleCellExperiment</code> object. But we’ll want to work with it largely because that will make it simpler. I also noticed that the zenodo data object includes a “whitelist” variable, such that for each of the 65989 barcodes across the 6 samples, it’s communicating whether salmon thinks it’s a high quality cell or not. I don’t see this variable getting used in the analysis aside from being included in building the <code>SingleCellExperiment</code> object. It could be interesting to see how it compares to filtering steps (like scuttle QC or ambient RNA detection…)</p>
+<p>You can fetch zenodo data with an R package <code>zen4R</code> (which is what I did) or using <code>curl</code> which is what the vignette did. Going to use <code>zen4R</code> for the case study.</p>
+<p>(Include in a click to expand section here or earlier about what options there are for aligning and counting single cell data)</p>
+<hr>
+<!--
+Describe any limitations that exist in this analysis whether it be due to the data itself, methods used, nature of the topic, etc.
+You can list more than 2
+See the following example from a previous case study: https://www.opencasestudies.org/ocs-bp-opioid-rural-urban/#Limitations
+-->
+</section>
+<section id="limitations" class="level1">
+<h1><strong>Limitations</strong></h1>
+<hr>
+<p>There are some important considerations regarding this data analysis to keep in mind:</p>
+<ol type="1">
+<li>{FILL IN}</li>
+<li>{FILL IN}</li>
+</ol>
+<hr>
+<!--
+List any important bioethics considerations when performing an analysis like this or working with data like this.
+
+See doi: 10.1007/s41649-019-00099-x and https://depts.washington.edu/bhdept/ethics-medicine/bioethics-topics/articles/principles-bioethics for principles and considerations.
+Examples may include: how identifiable (or re-identifiable) is your data? cell lines or consent? specific considerations for a specific population?
+-->
+</section>
+<section id="ethical-considerations" class="level1">
+<h1><strong>Ethical Considerations</strong></h1>
+<hr>
+<p>There are some important ethical considerations when working with data relating to this case study’s main questions.</p>
+<ol type="1">
+<li>{FILL IN}</li>
+<li>{FILL IN}</li>
+</ol>
+<hr>
+<!--
+Consider incorporating a checklist of statements that learners should answer/discuss for every case study for bioethics principles.
+-->
 </section>
 <section id="packages-and-setup" class="level1">
 <h1><strong>Packages and Setup</strong></h1>
@@ -688,71 +753,6 @@ FastCAR also needed to be installed from GitHub
 <li>scater: Plotting functions</li>
 <li>scrapper: Newer, more efficient implementation of <code>scuttle</code> and <code>scran</code> functionality. Seems to be a wrapper for some of the older <code>scran</code> functions too?</li>
 </ul>
-<!--
-More details on the background on the case study topic as well its relation to biomedical science.
-Videos or images may be helpful so this includes an example of embedding a video.
--->
-</section>
-<section id="context" class="level1">
-<h1><strong>Context</strong></h1>
-<hr>
-<p>{FILL IN}</p>
-<div class="quarto-video ratio ratio-16x9"><iframe data-external="1" src="https://www.youtube.com/embed/j-I0Zgicjsk" title="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen=""></iframe></div>
-<hr>
-<!--
-Describe the data to be analyzed and where it came from.
-You may want to include a table about file or variable info.
--->
-</section>
-<section id="what-are-the-data" class="level1">
-<h1><strong>What are the data?</strong></h1>
-<hr>
-<p>“Raw” Data is available 3 different ways for this project.</p>
-<ol type="1">
-<li>The <code>.fastq</code> files are <a href="https://trace.ncbi.nlm.nih.gov/Traces/index.html?run=SRR21020314">available on SRA</a>, with instructions on how they were aligned and counted using <code>salmon alevin</code> <a href="https://github.com/PeixotoLab/RNAseq_sleep/blob/main/README.md#running-salmon-alevin">available on the GitHub</a>.</li>
-<li>Slightly processed matrix files, separated for each of the 6 samples, <a href="https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE211088">available on GEO</a>.</li>
-<li>A <code>SingleCellExperiment</code> object of slightly processed data, for all 6 samples, <a href="https://zenodo.org/records/10091236">available on zenodo</a> are already stored as a specialized R class/object – a <code>SingleCellExperiment</code>. It has data for all 6 samples (“1C”, “2E”, “3C”, “4E”, “5C”, “8E”) in the one object.</li>
-</ol>
-<p><img src="img/singleCellExperimentObject.png" class="img-fluid"></p>
-<p>We’ll want to include information in the background sections on <code>.fastq</code> files being the raw data and how they get to where they are when we start working with them for this kind of a project.</p>
-<p>The zenodo data and object is the one that the vignette works with. Therefore, I think it would be worthwhile to include a side quest of how they got to that <code>SingleCellExperiment</code> object. But we’ll want to work with it largely because that will make it simpler. I also noticed that the zenodo data object includes a “whitelist” variable, such that for each of the 65989 barcodes across the 6 samples, it’s communicating whether salmon thinks it’s a high quality cell or not. I don’t see this variable getting used in the analysis aside from being included in building the <code>SingleCellExperiment</code> object. It could be interesting to see how it compares to filtering steps (like scuttle QC or ambient RNA detection…)</p>
-<p>You can fetch zenodo data with an R package <code>zen4R</code> (which is what I did) or using <code>curl</code> which is what the vignette did. Going to use <code>zen4R</code> for the case study.</p>
-<p>(Include in a click to expand section here or earlier about what options there are for aligning and counting single cell data)</p>
-<hr>
-<!--
-Describe any limitations that exist in this analysis whether it be due to the data itself, methods used, nature of the topic, etc.
-You can list more than 2
-See the following example from a previous case study: https://www.opencasestudies.org/ocs-bp-opioid-rural-urban/#Limitations
--->
-</section>
-<section id="limitations" class="level1">
-<h1><strong>Limitations</strong></h1>
-<hr>
-<p>There are some important considerations regarding this data analysis to keep in mind:</p>
-<ol type="1">
-<li>{FILL IN}</li>
-<li>{FILL IN}</li>
-</ol>
-<hr>
-<!--
-List any important bioethics considerations when performing an analysis like this or working with data like this.
-
-See doi: 10.1007/s41649-019-00099-x and https://depts.washington.edu/bhdept/ethics-medicine/bioethics-topics/articles/principles-bioethics for principles and considerations.
-Examples may include: how identifiable (or re-identifiable) is your data? cell lines or consent? specific considerations for a specific population?
--->
-</section>
-<section id="ethical-considerations" class="level1">
-<h1><strong>Ethical Considerations</strong></h1>
-<hr>
-<p>There are some important ethical considerations when working with data relating to this case study’s main questions.</p>
-<ol type="1">
-<li>{FILL IN}</li>
-<li>{FILL IN}</li>
-</ol>
-<hr>
-<!--
-Consider incorporating a checklist of statements that learners should answer/discuss for every case study for bioethics principles.
--->
 </section>
 <section id="data-import" class="level1">
 <h1><strong>Data Import</strong></h1>
